@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { Sparkles, FormInput } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import WizardShell from '@/components/wizard/WizardShell'
 import WorthMappingGate from '@/components/wizard/WorthMappingGate'
@@ -11,9 +12,12 @@ import CommsStep from '@/components/wizard/CommsStep'
 import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
+import AiChatPanel from '@/components/AiChatPanel'
 import { emptyEntry, type ProcessEntry } from '@/lib/types'
 import { generateId, loadEntry, saveEntry } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
+import type { FormFillPatch } from '@/lib/ai'
+import { cn } from '@/lib/utils'
 
 export default function ProcessBuilder() {
   const { id } = useParams<{ id?: string }>()
@@ -21,6 +25,7 @@ export default function ProcessBuilder() {
   const [entry, setEntry] = useState<ProcessEntry>(() => emptyEntry(id ?? generateId()))
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [leftTab, setLeftTab] = useState<'form' | 'ai'>('form')
 
   useEffect(() => {
     if (id) {
@@ -73,6 +78,14 @@ export default function ProcessBuilder() {
     }
   }
 
+  function handleAiApply(fillPatch: FormFillPatch) {
+    patch(fillPatch)
+    setLeftTab('form')
+    // Jump to Core Identity so TL can review from the start
+    if (step === 0) setStep(1)
+    toast.success('Fields applied — review the form')
+  }
+
   function renderStep() {
     switch (step) {
       case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/')} />
@@ -110,28 +123,62 @@ export default function ProcessBuilder() {
 
       {/* Main split */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Wizard */}
+        {/* Left: Form / AI tabs */}
         <div className="w-[40%] min-w-[320px] border-r flex flex-col overflow-hidden shrink-0">
-          <WizardShell step={step} onStepClick={setStep}>
-            {renderStep()}
-          </WizardShell>
-
-          {/* Step nav */}
-          <div className="border-t px-4 py-3 flex justify-between shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-              disabled={isFirstStep}
+          {/* Tab bar — same pattern as PlaybookStudio's Visual/DSL/Chat tabs */}
+          <div className="flex border-b shrink-0">
+            <button
+              onClick={() => setLeftTab('form')}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors',
+                leftTab === 'form'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
             >
-              Back
-            </Button>
-            {!isLastStep && (
-              <Button size="sm" onClick={() => setStep((s) => Math.min(6, s + 1))}>
-                Continue
-              </Button>
-            )}
+              <FormInput className="w-3.5 h-3.5" />
+              Form
+            </button>
+            <button
+              onClick={() => setLeftTab('ai')}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors',
+                leftTab === 'ai'
+                  ? 'border-violet-500 text-violet-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              AI Fill
+            </button>
           </div>
+
+          {leftTab === 'ai' ? (
+            <AiChatPanel onApply={handleAiApply} />
+          ) : (
+            <>
+              <WizardShell step={step} onStepClick={setStep}>
+                {renderStep()}
+              </WizardShell>
+
+              {/* Step nav */}
+              <div className="border-t px-4 py-3 flex justify-between shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStep((s) => Math.max(0, s - 1))}
+                  disabled={isFirstStep}
+                >
+                  Back
+                </Button>
+                {!isLastStep && (
+                  <Button size="sm" onClick={() => setStep((s) => Math.min(6, s + 1))}>
+                    Continue
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right: Canvas */}
