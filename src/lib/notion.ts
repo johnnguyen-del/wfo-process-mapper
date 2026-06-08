@@ -1,41 +1,13 @@
 import type { ProcessEntry } from './types'
 
-const DB_ID = 'ac032564-55fc-45e0-85fd-3e2a3e2d4c12'
-
-// MCPLocker tool name: mcp__mcplocker__notion__notion-create-pages
-// MagicTools canonical name strips mcp__mcplocker__ prefix
-const NOTION_CREATE_PAGES = 'notion__notion-create-pages'
+const DATA_SOURCE_ID = 'ac032564-55fc-45e0-85fd-3e2a3e2d4c12'
 
 function isoDate(d: string): string {
   return d ? d.split('T')[0] : new Date().toISOString().split('T')[0]
 }
 
-function text(content: string) {
-  return { rich_text: [{ text: { content } }] }
-}
-
-function title(content: string) {
-  return { title: [{ text: { content } }] }
-}
-
-function select(name: string) {
-  return name ? { select: { name } } : undefined
-}
-
-function multiSelect(names: string[]) {
-  return { multi_select: names.map((name) => ({ name })) }
-}
-
-function checkbox(value: boolean) {
-  return { checkbox: value }
-}
-
-function url(value: string) {
-  return value ? { url: value } : undefined
-}
-
-function date(start: string) {
-  return { date: { start } }
+function bool(v: boolean): string {
+  return v ? '__YES__' : '__NO__'
 }
 
 export async function submitToNotion(
@@ -46,51 +18,77 @@ export async function submitToNotion(
     throw new Error('MagicTools not available — is this running on Magic?')
   }
 
-  const properties: Record<string, unknown> = {
-    'Process Name': title(entry.processName),
-    ...(entry.domain && { Domain: select(entry.domain) }),
-    Description: text(entry.description),
-    'Team Owner': multiSelect(entry.teamOwner),
-    ...(entry.volumeTier && { 'Volume Tier': select(entry.volumeTier) }),
-    'User Tools': multiSelect(entry.userTools),
-    'Jira Board(s)': multiSelect(entry.jiraBoards),
-    'Atlas Copilot': checkbox(entry.atlasCopilot),
-    'Decagon (L0)': checkbox(entry.decagonL0),
-    'L0 Containable': checkbox(entry.l0Containable),
-    Workato: checkbox(entry.workato),
-    'Doc Review': checkbox(entry.docReview),
-    'Outbound Comms': multiSelect(entry.outboundComms),
-    ...(entry.spoofableRisk && { 'Spoofable Risk': select(entry.spoofableRisk) }),
-    'Last Reviewed': date(isoDate(entry.lastReviewed)),
-    ...(toolUrl && { 'Figma Map': url(toolUrl) }),
+  const properties: Record<string, string | null> = {
+    'Process Name': entry.processName,
+    'Domain': entry.domain || null,
+    'Description': entry.description || null,
+    'Team Owner': JSON.stringify(entry.teamOwner),
+    'Volume Tier': entry.volumeTier || null,
+    'User Tools': JSON.stringify(entry.userTools),
+    'Jira Board(s)': JSON.stringify(entry.jiraBoards),
+    'Atlas Copilot': bool(entry.atlasCopilot),
+    'Decagon (L0)': bool(entry.decagonL0),
+    'L0 Containable': bool(entry.l0Containable),
+    'Containment Blocker': entry.containmentBlocker || null,
+    'Workato': bool(entry.workato),
+    'Workato Recipe Link': entry.workatoRecipeLink || null,
+    'Outbound Comms': JSON.stringify(entry.outboundComms),
+    'Spoofable Risk': entry.spoofableRisk || null,
+    'Client Comms': entry.clientComms || null,
+    'Ops Domains': JSON.stringify(entry.opsDomains),
+    'Other Metrics': entry.otherMetrics || null,
+    'date:Last Reviewed:start': isoDate(entry.lastReviewed),
+    'date:Last Reviewed:is_datetime': '0',
+    'Doc Review': bool(entry.docReview),
+    'Figma Map': toolUrl || null,
   }
 
-  if (entry.containmentBlocker?.trim()) {
-    properties['Containment Blocker'] = text(entry.containmentBlocker)
-  }
-  if (entry.workatoRecipeLink?.trim()) {
-    properties['Workato Recipe Link'] = url(entry.workatoRecipeLink)
-  }
-  if (entry.clientComms?.trim()) {
-    properties['Client Comms'] = url(entry.clientComms)
-  }
-  if (entry.opsDomains.length > 0) {
-    properties['Ops Domains'] = multiSelect(entry.opsDomains)
-  }
-  if (entry.otherMetrics?.trim()) {
-    properties['Other Metrics'] = text(entry.otherMetrics)
+  // Check Notion is connected first
+  let services: Array<{ name: string; connected: boolean }> = []
+  try {
+    const svcResult = await MagicTools.services()
+    services = svcResult.services
+  } catch { /* ignore */ }
+
+  const notionSvc = services.find(s => s.name?.toLowerCase().includes('notion'))
+  if (notionSvc && !notionSvc.connected) {
+    throw new Error('Notion is not connected in MCPLocker. Go to your Magic account settings and connect the Notion integration.')
   }
 
-  const result = await MagicTools.call(
-    NOTION_CREATE_PAGES,
-    { database_id: DB_ID, properties },
-    { raw: true }
-  )
+  let result: any
+  try {
+    result = await MagicTools.call(
+      'notion__notion-create-pages',
+      {
+        parent: {
+          type: 'data_source_id',
+          data_source_id: DATA_SOURCE_ID,
+        },
+        pages: [{ properties }],
+      },
+      { raw: true }
+    )
+  } catch (err: any) {
+    // Surface the actual MagicTools error
+    throw new Error(`MagicTools Notion call failed: ${err?.message ?? err?.code ?? String(err)}`)
+  }
 
+  // Check result looks like a real created page
+  // MagicTools raw result for notion-create-pages should have pages with urls
+  const rawStr = JSON.stringify(result ?? '')
+  const hasError = rawStr.toLowerCase().includes('error') || rawStr.toLowerCase().includes('unauthorized')
+
+  if (hasError) {
+    throw new Error(`Notion write failed. Response: ${rawStr.slice(0, 300)}`)
+  }
+
+  // Extract URL from result
+  const page = result?.results?.[0] ?? result?.pages?.[0] ?? result?.[0]
   const pageUrl: string =
-    (result as any)?.url ||
-    (result as any)?.page?.url ||
-    `https://www.notion.so/${DB_ID.replace(/-/g, '')}`
+    page?.url ||
+    page?.page?.url ||
+    (typeof result === 'object' && result?.url) ||
+    `https://app.notion.com/p/wealthsimple/WFO-Master-Process-Inventory-6d5cbb7a96744e8e82522e532228bad0`
 
   return pageUrl
 }

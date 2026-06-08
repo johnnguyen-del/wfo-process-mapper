@@ -1,0 +1,72 @@
+<h2>Where should the AI live?</h2>
+<p class="subtitle">The AI will let TLs describe a process in plain English and have Claude fill in all the fields. The question is how it enters the flow.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:16px;font-family:monospace;font-size:12px;">
+      <div style="background:#0f172a;color:#f8fafc;padding:10px 14px;border-radius:8px;margin-bottom:8px;font-size:11px;">
+        ⚡ WFO Process Mapper &nbsp;&nbsp;&nbsp; Processes &nbsp; + New Process
+      </div>
+      <div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+        <div style="font-weight:600;margin-bottom:6px;font-size:13px;">✨ Describe your process</div>
+        <div style="background:#f1f5f9;border-radius:6px;padding:10px;font-size:11px;color:#64748b;margin-bottom:8px;min-height:48px;">
+          e.g. "Metal card reissuance — client calls in, CS verifies in Atlas, submits BOPSIT JIRA…"
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button style="background:#0f172a;color:white;border:none;padding:6px 14px;border-radius:6px;font-size:11px;flex:1;">Auto-fill with AI ✨</button>
+          <button style="background:transparent;border:1px solid #e2e8f0;padding:6px 14px;border-radius:6px;font-size:11px;">Fill manually</button>
+        </div>
+      </div>
+      <div style="text-align:center;color:#94a3b8;font-size:10px;margin-top:6px;">↓ AI fills all fields → wizard opens pre-filled for review</div>
+    </div>
+    <div class="card-body">
+      <h3>A — AI-first entry</h3>
+      <p>Replaces the "Worth Mapping?" gate. TL describes the process in plain English, Claude fills every field in one shot. Wizard opens pre-filled — TL reviews and submits. <strong>Most impressive for the demo.</strong></p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:16px;font-family:monospace;font-size:12px;">
+      <div style="display:flex;gap:8px;height:120px;">
+        <div style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:10px;">
+          <div style="font-weight:600;font-size:11px;margin-bottom:6px;">① Core Identity</div>
+          <div style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:4px;width:90%"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:4px;width:70%"></div>
+          <div style="height:8px;background:#e2e8f0;border-radius:4px;width:80%"></div>
+        </div>
+        <div style="width:180px;border:1px solid #6366f1;border-radius:8px;padding:10px;background:#fafafa;">
+          <div style="font-size:10px;font-weight:600;color:#6366f1;margin-bottom:6px;">✨ AI Assistant</div>
+          <div style="font-size:9px;color:#64748b;background:#f1f5f9;padding:6px;border-radius:4px;margin-bottom:6px;">What tools does this process use?</div>
+          <div style="font-size:9px;color:#0f172a;background:#ede9fe;padding:6px;border-radius:4px;margin-bottom:6px;">Atlas, JIRA, Persona</div>
+          <div style="height:18px;background:#e2e8f0;border-radius:4px;"></div>
+        </div>
+      </div>
+      <div style="text-align:center;color:#94a3b8;font-size:10px;margin-top:6px;">Persistent side panel — always visible while filling form</div>
+    </div>
+    <div class="card-body">
+      <h3>B — Persistent side panel</h3>
+      <p>A chat panel sits alongside the wizard at all times (like PlaybookStudio's builder). TL can ask questions or say "fill this step for me." More conversational, less one-shot.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:16px;font-family:monospace;font-size:12px;">
+      <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+        <div style="font-weight:600;font-size:12px;margin-bottom:4px;">① Core Identity</div>
+        <div style="background:#fefce8;border:1px solid #fbbf24;border-radius:6px;padding:8px;font-size:10px;margin-bottom:8px;color:#92400e;">
+          ✨ <strong>Try AI:</strong> Paste a description or Notion link and Claude will suggest field values.
+          <div style="height:18px;background:#fef3c7;border-radius:4px;margin-top:6px;"></div>
+        </div>
+        <div style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:4px;width:80%"></div>
+        <div style="height:8px;background:#e2e8f0;border-radius:4px;width:60%"></div>
+      </div>
+      <div style="text-align:center;color:#94a3b8;font-size:10px;margin-top:6px;">Inline prompt at top of each wizard step</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Inline per-step prompt</h3>
+      <p>A collapsible AI prompt lives at the top of each wizard step. TL can optionally use it to get suggestions for that step's fields. Lower disruption, less wow-factor.</p>
+    </div>
+  </div>
+
+</div>

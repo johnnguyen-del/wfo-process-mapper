@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Sparkles, FormInput } from 'lucide-react'
+import { Sparkles, FormInput, CheckCircle, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import WizardShell from '@/components/wizard/WizardShell'
 import WorthMappingGate from '@/components/wizard/WorthMappingGate'
@@ -26,6 +26,7 @@ export default function ProcessBuilder() {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [leftTab, setLeftTab] = useState<'form' | 'ai'>('form')
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -42,12 +43,17 @@ export default function ProcessBuilder() {
     })
   }
 
-  function handleSaveDraft() {
+  function handleSave() {
     const now = new Date().toISOString()
-    const saved = { ...entry, lastReviewed: entry.lastReviewed || now.split('T')[0], status: 'draft' as const }
+    // Preserve existing status — don't downgrade 'submitted' to 'draft'
+    const saved = {
+      ...entry,
+      lastReviewed: entry.lastReviewed || now.split('T')[0],
+      status: entry.status === 'submitted' ? 'submitted' as const : 'draft' as const,
+    }
     setEntry(saved)
     saveEntry(saved)
-    toast.success('Draft saved')
+    toast.success(entry.status === 'submitted' ? 'Changes saved' : 'Draft saved')
   }
 
   async function handleSubmit() {
@@ -67,11 +73,11 @@ export default function ProcessBuilder() {
       const final = { ...submitted, notionPageUrl: notionUrl }
       setEntry(final)
       saveEntry(final)
-      toast.success('Submitted to Notion!')
-      navigate('/')
-    } catch (err) {
+      setSubmitSuccess(notionUrl)
+    } catch (err: any) {
       console.error(err)
-      toast.error('Notion write failed — draft saved locally. Try again or check MagicTools.')
+      const msg = err?.message ?? err?.code ?? String(err)
+      toast.error(msg, { duration: 10000 })
       saveEntry({ ...entry, status: 'draft' })
     } finally {
       setSubmitting(false)
@@ -81,9 +87,9 @@ export default function ProcessBuilder() {
   function handleAiApply(fillPatch: FormFillPatch) {
     patch(fillPatch)
     setLeftTab('form')
-    // Jump to Core Identity so TL can review from the start
-    if (step === 0) setStep(1)
-    toast.success('Fields applied — review the form')
+    setStep(1) // always jump to Core Identity regardless of current step
+    const name = (fillPatch as any).processName
+    toast.success(name ? `Applied: ${name}` : 'Fields applied — review the form')
   }
 
   function renderStep() {
@@ -102,6 +108,35 @@ export default function ProcessBuilder() {
   const isLastStep = step === 6
   const isFirstStep = step === 0
 
+  // Success screen — shown after Notion submission
+  if (submitSuccess) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-49px)] gap-6 p-8">
+        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+          <CheckCircle className="w-6 h-6 text-green-600" />
+        </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-1">Submitted to Notion</h2>
+          <p className="text-muted-foreground text-sm">{entry.processName}</p>
+        </div>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <Button asChild className="gap-2">
+            <a href={submitSuccess} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-4 h-4" />
+              Open in Notion
+            </a>
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/')}>
+            Back to process list
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSubmitSuccess(null)}>
+            Continue editing
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-49px)]">
       {/* Top bar */}
@@ -115,8 +150,8 @@ export default function ProcessBuilder() {
           </span>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleSaveDraft}>
-            Save Draft
+          <Button variant="outline" size="sm" onClick={handleSave}>
+            {entry.status === 'submitted' ? 'Save Changes' : 'Save Draft'}
           </Button>
         </div>
       </div>
@@ -184,7 +219,7 @@ export default function ProcessBuilder() {
         {/* Right: Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 py-2 border-b text-xs text-muted-foreground shrink-0">
-            Process Map — drag nodes from the palette, double-click to edit, Delete key to remove
+            Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove
           </div>
           <div className="flex-1 relative">
             <ProcessCanvas

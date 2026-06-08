@@ -2,10 +2,12 @@ import { HashRouter, Routes, Route, Link } from "react-router-dom"
 import { Toaster } from "@/components/ui/sonner"
 import ProcessList from "@/pages/ProcessList"
 import ProcessBuilder from "@/pages/ProcessBuilder"
+import ErrorBoundary from "@/components/ErrorBoundary"
 
 export default function App() {
   return (
     <HashRouter>
+      <ErrorBoundary>
       <div className="min-h-screen bg-background text-foreground">
         <header className="border-b px-6 py-3 flex items-center gap-4">
           <Link to="/" className="font-semibold text-sm">
@@ -27,6 +29,7 @@ export default function App() {
         </Routes>
       </div>
       <Toaster />
+      </ErrorBoundary>
     </HashRouter>
   )
 }

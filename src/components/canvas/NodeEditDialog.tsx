@@ -3,10 +3,17 @@ import type { Node } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, X } from 'lucide-react'
+import type { SwimLane } from '@/lib/types'
+
+const LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
+const LANE_COLORS: Record<string, string> = {
+  CS: '#1d4ed8', Ops: '#15803d', 'Fraud Ops': '#7e22ce',
+  'L2 - Risk': '#a16207', Automation: '#374151', Client: '#475569',
+}
 
 interface NodeEditDialogProps {
   node: Node
-  onSave: (id: string, label: string, timeEstimate: string) => void
+  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane) => void
   onDelete: () => void
   onClose: () => void
 }
@@ -14,9 +21,12 @@ interface NodeEditDialogProps {
 export default function NodeEditDialog({ node, onSave, onDelete, onClose }: NodeEditDialogProps) {
   const [label, setLabel] = useState((node.data as any).label ?? '')
   const [timeEstimate, setTimeEstimate] = useState((node.data as any).timeEstimate ?? '')
+  const [lane, setLane] = useState<SwimLane>((node.data as any).lane ?? 'CS')
+
+  const isStartEnd = node.type === 'start' || node.type === 'end'
 
   return (
-    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-xl shadow-xl p-4 w-72">
+    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-xl shadow-xl p-4 w-80">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-semibold">Edit node</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -34,6 +44,30 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
             autoFocus
           />
         </div>
+
+        {!isStartEnd && (
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Team / Lane (badge)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {LANES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLane(l)}
+                  className="text-[11px] font-semibold px-2 py-0.5 rounded border transition-all"
+                  style={{
+                    backgroundColor: lane === l ? `${LANE_COLORS[l]}22` : 'transparent',
+                    borderColor: lane === l ? LANE_COLORS[l] : '#e2e8f0',
+                    color: lane === l ? LANE_COLORS[l] : '#94a3b8',
+                  }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Time estimate (optional)</label>
           <Input
@@ -45,20 +79,11 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
       </div>
 
       <div className="flex gap-2 mt-4">
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={onDelete}
-          className="gap-1"
-        >
+        <Button variant="destructive" size="sm" onClick={onDelete} className="gap-1">
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button
-          size="sm"
-          onClick={() => onSave(node.id, label, timeEstimate)}
-          className="flex-1"
-        >
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane)} className="flex-1">
           Save
         </Button>
       </div>
