@@ -3,11 +3,11 @@ import { cn } from '@/lib/utils'
 const STEPS = [
   'Worth Mapping?',
   'Core Identity',
-  'Volume & Tooling',
+  'Volume & Tools',
   'Automation',
   'Comms & Risk',
   'Taxonomy',
-  'Review & Submit',
+  'Review',
 ]
 
 interface WizardShellProps {
@@ -20,7 +20,7 @@ export default function WizardShell({ step, onStepClick, children }: WizardShell
   return (
     <div className="flex flex-col h-full">
       {/* Step progress */}
-      <div className="flex items-center gap-1 px-4 py-3 border-b bg-muted/30 overflow-x-auto shrink-0">
+      <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/30 overflow-x-auto shrink-0 scrollbar-none">
         {STEPS.map((label, i) => (
           <button
             key={i}

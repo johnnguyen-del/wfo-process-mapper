@@ -34,12 +34,12 @@ const NODE_TYPES = {
 
 const LANE_HEIGHT = 150
 const LANE_COLORS: Record<SwimLane, string> = {
-  CS: '#dbeafe33',
-  Ops: '#dcfce733',
-  'Fraud Ops': '#f3e8ff33',
-  'L2 - Risk': '#fef9c333',
-  Automation: '#f1f5f933',
-  Client: '#f8fafc33',
+  CS: '#dbeafe99',
+  Ops: '#dcfce799',
+  'Fraud Ops': '#f3e8ff99',
+  'L2 - Risk': '#fef9c399',
+  Automation: '#e5e7eb99',
+  Client: '#f1f5f999',
 }
 const LANE_LABEL_COLORS: Record<SwimLane, string> = {
   CS: '#1d4ed8',
@@ -222,15 +222,16 @@ export default function ProcessCanvas({
           {lanes.map((lane, i) => (
             <div
               key={lane}
-              className="absolute left-0 right-0 border-b border-border/40 flex items-center"
+              className="absolute left-0 right-0 border-b border-border/50 flex items-center"
               style={{
                 top: i * LANE_HEIGHT,
                 height: LANE_HEIGHT,
                 backgroundColor: LANE_COLORS[lane],
+                borderLeft: `3px solid ${LANE_LABEL_COLORS[lane]}`,
               }}
             >
               <span
-                className="text-[11px] font-semibold px-2 select-none opacity-60 w-20 shrink-0"
+                className="text-[11px] font-bold px-2 select-none w-20 shrink-0"
                 style={{ color: LANE_LABEL_COLORS[lane] }}
               >
                 {lane}
