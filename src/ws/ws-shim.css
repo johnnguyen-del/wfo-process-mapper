@@ -1,0 +1,200 @@
+/* ws-shim.css — bridges shadcn/ui CSS variables to Wealthsimple Mobile DS v2 tokens.
+ *
+ * Usage:
+ *   In src/index.css, AFTER @import "shadcn/tailwind.css":
+ *     @import "./ws/colors_and_type.css";
+ *     @import "./ws/ws-shim.css";
+ *
+ *   In index.html, change <html class="dark"> to <html data-theme="dark">
+ *   (WS auto-swaps tokens on [data-theme="dark"]; the .dark class can stay if
+ *   you want, the shim handles both).
+ *
+ * Notes for desktop:
+ *   - WS DS v2 is a mobile system. Type scale & spacing are generous.
+ *     The "Desktop overrides" block at the bottom dials a few values down
+ *     so dense screens (tables, analytics, settings) don't feel cavernous.
+ *     Tweak per-component as needed — they're starting points, not gospel.
+ */
+
+/* ─── 1. shadcn vars → WS tokens ───────────────────────────────────────── */
+:root,
+:root.light,
+[data-theme="light"] {
+  /* Surfaces */
+  --background: var(--app-bg);
+  --foreground: var(--strong-fg);
+  --card: var(--surface-medium-bg);
+  --card-foreground: var(--strong-fg);
+  --popover: var(--app-bg);
+  --popover-foreground: var(--strong-fg);
+
+  /* Primary (the "main" button) — WS uses strong inverted bg/fg */
+  --primary: var(--strong-bg);
+  --primary-foreground: var(--strong-fg-inverted);
+
+  /* Secondary, muted, accent — all map to WS surface layers */
+  --secondary: var(--surface-high-bg-interactive);
+  --secondary-foreground: var(--strong-fg);
+  --muted: var(--surface-medium-bg);
+  --muted-foreground: var(--soft-fg);
+  --accent: var(--surface-high-bg-interactive);
+  --accent-foreground: var(--strong-fg);
+
+  /* Destructive — WS negative */
+  --destructive: var(--negative-fg-strong);
+  --destructive-foreground: var(--strong-fg-inverted);
+
+  /* Lines + focus */
+  --border: var(--outline);
+  --input: var(--outline);
+  --ring: var(--highlight-fg-strong);
+
+  /* Charts → WS data-viz categorical */
+  --chart-1: var(--dv-categorical-01);
+  --chart-2: var(--dv-categorical-02);
+  --chart-3: var(--dv-categorical-03);
+  --chart-4: var(--dv-categorical-04);
+  --chart-5: var(--dv-categorical-05);
+
+  /* Sidebar (shadcn convention) */
+  --sidebar: var(--surface-medium-bg);
+  --sidebar-foreground: var(--strong-fg);
+  --sidebar-primary: var(--strong-bg);
+  --sidebar-primary-foreground: var(--strong-fg-inverted);
+  --sidebar-accent: var(--surface-high-bg-interactive);
+  --sidebar-accent-foreground: var(--strong-fg);
+  --sidebar-border: var(--outline);
+  --sidebar-ring: var(--highlight-fg-strong);
+
+  /* Type */
+  --font-sans: "Wealthsimple Sans Display", system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* Radius — WS card default is 20px. shadcn --radius drives a scale, so
+   * we set it to something that produces sensible rounded-md / rounded-lg
+   * once shadcn's calc(--radius * 0.8) etc. is applied. */
+  --radius: 0.875rem; /* 14px → md ≈ 11px, lg = 14px, xl ≈ 20px (cardDefault) */
+}
+
+/* Dark theme — shadcn uses .dark, WS uses [data-theme="dark"]. Support both. */
+.dark,
+:root.dark,
+[data-theme="dark"] {
+  --background: var(--app-bg);
+  --foreground: var(--strong-fg);
+  --card: var(--surface-medium-bg);
+  --card-foreground: var(--strong-fg);
+  --popover: var(--surface-medium-bg);
+  --popover-foreground: var(--strong-fg);
+  --primary: var(--strong-bg);
+  --primary-foreground: var(--strong-fg-inverted);
+  --secondary: var(--surface-high-bg-interactive);
+  --secondary-foreground: var(--strong-fg);
+  --muted: var(--surface-medium-bg);
+  --muted-foreground: var(--soft-fg);
+  --accent: var(--surface-high-bg-interactive);
+  --accent-foreground: var(--strong-fg);
+  --destructive: var(--negative-fg-strong);
+  --destructive-foreground: var(--strong-fg-inverted);
+  --border: var(--outline);
+  --input: var(--outline);
+  --ring: var(--highlight-fg-strong);
+  --sidebar: var(--surface-medium-bg);
+  --sidebar-foreground: var(--strong-fg);
+  --sidebar-primary: var(--strong-bg);
+  --sidebar-primary-foreground: var(--strong-fg-inverted);
+  --sidebar-accent: var(--surface-high-bg-interactive);
+  --sidebar-accent-foreground: var(--strong-fg);
+  --sidebar-border: var(--outline);
+  --sidebar-ring: var(--highlight-fg-strong);
+}
+
+/* Apply font globally + WS OpenType case feature (aligns punctuation with caps) */
+html, body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'case';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular-nums utility — WS rule: only use for spreadsheet-column alignment.
+ * Use sparingly. NEVER on prose, prices in lists, hero numbers. */
+.ws-tnum { font-variant-numeric: tabular-nums; }
+
+
+/* ─── 2. Desktop tuning ─────────────────────────────────────────────────
+ *
+ * WS DS v2 sizes were designed for ~390px phones. On a 1280px+ desktop a
+ * couple of values feel oversized. These overrides nudge components down
+ * to desktop-comfortable while staying inside the token system.
+ *
+ * Remove or comment out anything you don't want.
+ */
+
+/* Hero numerals & page titles — WS xxlarge is 40/48. On desktop that's fine
+ * for hero metrics but too big for routine h1s. Subtle tap-down. */
+.text-page-title-desktop { font-size: 32px; line-height: 38px; letter-spacing: -0.32px; font-weight: 500; }
+
+/* Body text — keep WS default at 16, but offer a 14 utility for dense tables. */
+.text-body-dense { font-size: 14px; line-height: 20px; }
+
+/* Cards & tables on desktop — tighten radius from 20 → 14 for non-hero cards. */
+[data-density="compact"] [data-card="surface"] { border-radius: 14px; }
+
+/* Buttons — WS mobile buttons are tall (44px hit-target). Desktop can go 36-40. */
+.btn-sm-desktop  { padding: 6px 10px; font-size: 13px; border-radius: 10px; }
+.btn-md-desktop  { padding: 9px 14px; font-size: 14px; border-radius: 12px; }
+
+
+/* ─── 3. Common patterns from the Playbook Studio mockup ───────────────
+ *
+ * Optional — drop these if you want to reuse the same patterns from the
+ * Hi-fi mockup. All use WS tokens, no invented colors.
+ */
+
+/* Tag / chip — for status, domain, "Verified", etc. */
+.ws-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 500;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--surface-medium-bg);
+  color: var(--soft-fg);
+  border: 1px solid var(--outline);
+  white-space: nowrap;
+}
+.ws-tag[data-scheme="positive"]  { background: var(--positive-bg-soft);  color: var(--positive-fg-strong);  border-color: transparent; }
+.ws-tag[data-scheme="warning"]   { background: var(--warning-bg-soft);   color: var(--warning-fg-strong);   border-color: transparent; }
+.ws-tag[data-scheme="negative"]  { background: var(--negative-bg-soft);  color: var(--negative-fg-strong);  border-color: transparent; }
+.ws-tag[data-scheme="highlight"] { background: var(--highlight-bg-soft); color: var(--highlight-fg-strong); border-color: transparent; }
+
+/* Banner — inline informational/warning bar */
+.ws-banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px; border-radius: 14px;
+  background: var(--highlight-bg-soft);
+  color: var(--highlight-fg-strong);
+  font-size: 13px; line-height: 1.5;
+}
+.ws-banner[data-scheme="warning"]  { background: var(--warning-bg-soft);  color: var(--warning-fg-strong); }
+.ws-banner[data-scheme="positive"] { background: var(--positive-bg-soft); color: var(--positive-fg-strong); }
+.ws-banner[data-scheme="negative"] { background: var(--negative-bg-soft); color: var(--negative-fg-strong); }
+.ws-banner strong { font-weight: 500; }
+
+/* Segmented control — for view-switcher / sort */
+.ws-seg {
+  display: inline-flex; gap: 2px; padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-medium-bg);
+  border: 1px solid var(--outline);
+}
+.ws-seg button {
+  background: transparent; border: 0;
+  padding: 6px 12px; border-radius: 9px;
+  font-size: 13px; color: var(--soft-fg);
+  font-family: inherit;
+}
+.ws-seg button[data-active="true"] {
+  background: var(--app-bg);
+  color: var(--strong-fg);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}

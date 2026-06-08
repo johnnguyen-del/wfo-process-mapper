@@ -1,0 +1,1483 @@
+/* ==========================================================
+   Wealthsimple Mobile Design System v2 — Colors & Type
+   Source files (uploads/):
+     - colors.ts                          (foundational scales)
+     - semantic-layer-core-ws26-colors.ts (semantic layer)
+   ========================================================== */
+
+/* ==========================================================
+   FONTS — Wealthsimple Sans Display
+   ========================================================== */
+@font-face { font-family: "Wealthsimple Sans"; src: url("fonts/Wealthsimple-Sans-Display-Regular.otf") format("opentype");           font-weight: 400; font-style: normal;  font-display: swap; }
+@font-face { font-family: "Wealthsimple Sans"; src: url("fonts/Wealthsimple-Sans-Display-Regular-Oblique.otf") format("opentype");   font-weight: 400; font-style: italic;  font-display: swap; }
+@font-face { font-family: "Wealthsimple Sans"; src: url("fonts/Wealthsimple-Sans-Display-Medium.otf") format("opentype");            font-weight: 500; font-style: normal;  font-display: swap; }
+@font-face { font-family: "Wealthsimple Sans"; src: url("fonts/Wealthsimple-Sans-Display-Medium-Oblique.otf") format("opentype");    font-weight: 500; font-style: italic;  font-display: swap; }
+@font-face { font-family: "Wealthsimple Sans"; src: url("fonts/Wealthsimple-Sans-Display-Bold.otf") format("opentype");              font-weight: 700; font-style: normal;  font-display: swap; }
+@font-face { font-family: "Wealthsimple Sans"; src: url("fonts/Wealthsimple-Sans-Display-Bold-Oblique.otf") format("opentype");      font-weight: 700; font-style: italic;  font-display: swap; }
+
+/* ==========================================================
+   FOUNDATIONAL COLOR SCALES (theme-agnostic)
+   Each family runs L10 (darkest) → L98 (lightest).
+   FG variants are richer/more saturated; BG variants are
+   muted for use as soft surfaces.
+   ========================================================== */
+:root {
+  /* Reserved */
+  --pure-black: #000000;
+  --pure-white: #FFFFFF;
+  --off-black:  #181716;
+  --off-white:  #F2F2F2;
+
+  /* Slate (neutral) */
+  --slate-l10:#1C1B1B; --slate-l12:#222120; --slate-l20:#32302F; --slate-l30:#494645;
+  --slate-l40:#686664; --slate-l50:#7A7674; --slate-l60:#94908D; --slate-l70:#AFAAA7;
+  --slate-l80:#C9C6C4; --slate-l90:#EBEBEA; --slate-l92:#EBEAEA; --slate-l95:#F5F4F4;
+  --slate-l98:#F8F8F8;
+
+  /* Chartreuse */
+  --chartreuse-fg-l10:#1A1D0B; --chartreuse-fg-l20:#2D3318; --chartreuse-fg-l30:#434A25; --chartreuse-fg-l40:#596334;
+  --chartreuse-fg-l50:#717C43; --chartreuse-fg-l60:#899752; --chartreuse-fg-l70:#A3B363; --chartreuse-fg-l80:#BDCF73;
+  --chartreuse-fg-l90:#E1EFA8; --chartreuse-fg-l95:#EFF6D1; --chartreuse-fg-l98:#F9FFE8;
+  --chartreuse-bg-l10:#1A1C15; --chartreuse-bg-l20:#2F3226; --chartreuse-bg-l30:#444839; --chartreuse-bg-l40:#5B614D;
+  --chartreuse-bg-l50:#737A61; --chartreuse-bg-l60:#8C9477; --chartreuse-bg-l70:#A6AF8D; --chartreuse-bg-l80:#C1CBA4;
+  --chartreuse-bg-l90:#DCE8BB; --chartreuse-bg-l95:#ECF3D5; --chartreuse-bg-l98:#F5FAE7;
+
+  /* Celery (positive) */
+  --celery-fg-l10:#19341B; --celery-fg-l20:#214725; --celery-fg-l30:#2A5E32; --celery-fg-l40:#357941;
+  --celery-fg-l50:#409652; --celery-fg-l60:#4DB565; --celery-fg-l70:#6DC382; --celery-fg-l80:#8DD19F;
+  --celery-fg-l90:#ADDFBC; --celery-fg-l95:#CEECD7; --celery-fg-l98:#EDF8F0;
+  --celery-bg-l10:#222C21; --celery-bg-l20:#263725; --celery-bg-l30:#476F44; --celery-bg-l40:#558E52;
+  --celery-bg-l50:#6AAD67; --celery-bg-l60:#84C082; --celery-bg-l70:#9DCF9B; --celery-bg-l80:#B3DBB3;
+  --celery-bg-l90:#CBE7CA; --celery-bg-l95:#DFF1DF; --celery-bg-l98:#EDF7ED;
+
+  /* Sky (highlight) */
+  --sky-fg-l10:#1A304D; --sky-fg-l20:#213F67; --sky-fg-l30:#294F86; --sky-fg-l40:#305FAA;
+  --sky-fg-l50:#3B71CC; --sky-fg-l60:#5B88D9; --sky-fg-l70:#7CA0E4; --sky-fg-l80:#9CB7ED;
+  --sky-fg-l90:#BACDF4; --sky-fg-l95:#D4DFF9; --sky-fg-l98:#E8EEFC;
+  --sky-bg-l10:#1F252E; --sky-bg-l20:#212C3B; --sky-bg-l30:#3B5378; --sky-bg-l40:#43669D;
+  --sky-bg-l50:#557CBE; --sky-bg-l60:#7393CE; --sky-bg-l70:#8FA8DC; --sky-bg-l80:#A9BCE5;
+  --sky-bg-l90:#C3D0EE; --sky-bg-l95:#DBE2F5; --sky-bg-l98:#EBEFFA;
+
+  /* Lilac */
+  --lilac-fg-l10:#221339; --lilac-fg-l20:#3A1D60; --lilac-fg-l30:#522688; --lilac-fg-l40:#6A2EB0;
+  --lilac-fg-l50:#833CD0; --lilac-fg-l60:#9B5EDB; --lilac-fg-l70:#B27EE4; --lilac-fg-l80:#C69DEB;
+  --lilac-fg-l90:#D7BAF2; --lilac-fg-l95:#E7D3F7; --lilac-fg-l98:#F3E9FB;
+  --lilac-bg-l10:#1F202E; --lilac-bg-l20:#2D2D4D; --lilac-bg-l30:#423E75; --lilac-bg-l40:#564997;
+  --lilac-bg-l50:#735DB6; --lilac-bg-l60:#927AC7; --lilac-bg-l70:#AD95D6; --lilac-bg-l80:#C3ADE1;
+  --lilac-bg-l90:#D8C7EB; --lilac-bg-l95:#E8DDF3; --lilac-bg-l98:#F3ECF9;
+
+  /* Aubergine */
+  --aubergine-fg-l10:#391333; --aubergine-fg-l20:#601D54; --aubergine-fg-l30:#882675; --aubergine-fg-l40:#B02E94;
+  --aubergine-fg-l50:#D03CAE; --aubergine-fg-l60:#DB5EBD; --aubergine-fg-l70:#E47ECA; --aubergine-fg-l80:#EB9DD7;
+  --aubergine-fg-l90:#F2BAE3; --aubergine-fg-l95:#F7D3ED; --aubergine-fg-l98:#FBE9F6;
+  --aubergine-bg-l10:#2E1F2B; --aubergine-bg-l20:#502F4A; --aubergine-bg-l30:#753E6A; --aubergine-bg-l40:#974986;
+  --aubergine-bg-l50:#B65DA1; --aubergine-bg-l60:#C77AB4; --aubergine-bg-l70:#D695C5; --aubergine-bg-l80:#E1ADD3;
+  --aubergine-bg-l90:#EBC7E1; --aubergine-bg-l95:#F3DDED; --aubergine-bg-l98:#F9ECF5;
+
+  /* Apricot */
+  --apricot-fg-l10:#451D08; --apricot-fg-l20:#6C2E09; --apricot-fg-l30:#943F0A; --apricot-fg-l40:#BC520B;
+  --apricot-fg-l50:#E5660B; --apricot-fg-l60:#F67E23; --apricot-fg-l70:#F7984A; --apricot-fg-l80:#FAB070;
+  --apricot-fg-l90:#FCC897; --apricot-fg-l95:#FEDEBE; --apricot-fg-l98:#FFEEDB;
+  --apricot-bg-l10:#362217; --apricot-bg-l20:#4A2E1C; --apricot-bg-l30:#87502C; --apricot-bg-l40:#AE6832;
+  --apricot-bg-l50:#CE8346; --apricot-bg-l60:#DA9D67; --apricot-bg-l70:#E4B386; --apricot-bg-l80:#ECC7A2;
+  --apricot-bg-l90:#F2DABF; --apricot-bg-l95:#F8E9D8; --apricot-bg-l98:#FBF3E9;
+
+  /* Terracotta (negative) */
+  --terracotta-fg-l10:#410B0B; --terracotta-fg-l20:#540F0D; --terracotta-fg-l30:#6F1410; --terracotta-fg-l40:#901B13;
+  --terracotta-fg-l50:#C02416; --terracotta-fg-l60:#E22B18; --terracotta-fg-l70:#ED4F3C; --terracotta-fg-l80:#F27868;
+  --terracotta-fg-l90:#F7A193; --terracotta-fg-l95:#FAC7BE; --terracotta-fg-l98:#FDEBE7;
+  --terracotta-bg-l10:#321B1B; --terracotta-bg-l20:#3E1E1D; --terracotta-bg-l30:#7E3735; --terracotta-bg-l40:#A3433E;
+  --terracotta-bg-l50:#C25951; --terracotta-bg-l60:#D17971; --terracotta-bg-l70:#DD948D; --terracotta-bg-l80:#E6AEA7;
+  --terracotta-bg-l90:#EFC7C3; --terracotta-bg-l95:#F6DEDB; --terracotta-bg-l98:#FAECEB;
+
+  /* Lemon (warning) */
+  --lemon-fg-l10:#41350B; --lemon-fg-l20:#5C4B0F; --lemon-fg-l30:#7E6812; --lemon-fg-l40:#A78B15;
+  --lemon-fg-l50:#D4B316; --lemon-fg-l60:#EECE2D; --lemon-fg-l70:#F5DD56; --lemon-fg-l80:#FAE880;
+  --lemon-fg-l90:#FDF1A7; --lemon-fg-l95:#FEF8CA; --lemon-fg-l98:#FFFCE5;
+  --lemon-bg-l10:#362E17; --lemon-bg-l20:#433A19; --lemon-bg-l30:#87752C; --lemon-bg-l40:#AE9732;
+  --lemon-bg-l50:#CEB746; --lemon-bg-l60:#DAC967; --lemon-bg-l70:#E4D686; --lemon-bg-l80:#ECE2A2;
+  --lemon-bg-l90:#F2ECBF; --lemon-bg-l95:#F7F4D9; --lemon-bg-l98:#FBF9E9;
+}
+
+/* ==========================================================
+   SEMANTIC TOKENS — Light theme (default)
+   ========================================================== */
+:root,
+[data-theme="light"] {
+  /* System */
+  --system-white: #FFFFFF;
+  --system-black: #000000;
+
+  /* FG / Text + Icons */
+  --strong-fg:           #000000;
+  --soft-fg:             hsla(0, 0%, 0%, 0.55);
+  --inactive-fg:         hsla(0, 0%, 0%, 0.30);
+  --strong-fg-inverted:  #FFFFFF;
+  --subdued-fg-title:    rgba(0, 0, 0, 0.42);
+  --outline:             rgba(0, 0, 0, 0.08);
+
+  /* BG / Surfaces */
+  --app-bg:              #F2F2F2;
+  --sheet-bg:            #F2F2F2;
+  --nav-bg:              #F8F8F8;
+  --default-bg:          #FFFFFF;
+  --inactive-bg:         rgba(0, 0, 0, 0.03);
+  --soft-bg:             #EBEBEB;
+  --strong-bg:           #000000;
+
+  --surface-high-bg-interactive: #FFFFFF;
+  --surface-medium-bg:           #EBEBEB;
+  --surface-high-bg-default:     #FFFFFF; /* web only */
+
+  /* BG / Control */
+  --soft-bg-control:     rgba(0, 0, 0, 0.05);
+  --inactive-bg-control: rgba(0, 0, 0, 0.03);
+
+  /* BG / State */
+  --hover:               rgba(0, 0, 0, 0.04);
+  --pressed:             rgba(0, 0, 0, 0.04);
+  --selected:            rgba(0, 0, 0, 0.02);
+  --hover-inverted:      rgba(255, 255, 255, 0.16);
+  --pressed-inverted:    rgba(255, 255, 255, 0.08);
+  --scrim:               rgba(0, 0, 0, 0.48);
+
+  /* Skeleton */
+  --skeleton-fg:         rgba(0, 0, 0, 0.04);
+  --skeleton-bg:         rgba(0, 0, 0, 0.02);
+
+  /* PRIORITY — highlight (sky) */
+  --highlight-bg-soft:        rgba(169, 188, 229, 0.22); /* SKY_BG.L80 @ 22% */
+  --highlight-bg-soft-solid:  #EBEFFA;                   /* SKY_BG.L98 */
+  --highlight-fg-strong:      #305FAA;                   /* SKY_FG.L40 */
+  --highlight-graphic:        #5B88D9;                   /* SKY_FG.L60 */
+
+  /* PRIORITY — negative (terracotta) */
+  --negative-bg-soft:         rgba(230, 174, 167, 0.20); /* TERRACOTTA_BG.L80 @ 20% */
+  --negative-bg-soft-solid:   #FAECEB;                   /* TERRACOTTA_BG.L98 */
+  --negative-fg-strong:       #C02416;                   /* TERRACOTTA_FG.L50 */
+  --negative-graphic:         #E22B18;                   /* TERRACOTTA_FG.L60 */
+
+  /* PRIORITY — neutral (slate) */
+  --neutral-bg-soft:          rgba(175, 170, 167, 0.16); /* SLATE.L70 @ 16% */
+  --neutral-bg-soft-solid:    #F5F4F4;                   /* SLATE.L95 */
+  --neutral-fg-strong:        #32302F;                   /* SLATE.L20 */
+  --neutral-graphic:          rgba(175, 170, 167, 0.24); /* SLATE.L70 @ 24% */
+
+  /* PRIORITY — positive (celery) */
+  --positive-bg-soft:         rgba(132, 192, 130, 0.14); /* CELERY_BG.L60 @ 14% */
+  --positive-bg-soft-solid:   #EDF7ED;                   /* CELERY_BG.L98 */
+  --positive-fg-strong:       #357941;                   /* CELERY_FG.L40 */
+  --positive-graphic:         #409652;                   /* CELERY_FG.L50 */
+
+  /* PRIORITY — warning (lemon) */
+  --warning-bg-soft:          rgba(218, 201, 103, 0.24); /* LEMON_BG.L60 @ 24% */
+  --warning-bg-soft-solid:    #F7F4D9;                   /* LEMON_BG.L95 */
+  --warning-fg-strong:        #7E6812;                   /* LEMON_FG.L30 */
+  --warning-graphic:          #EECE2D;                   /* LEMON_FG.L60 */
+}
+
+/* ==========================================================
+   SEMANTIC TOKENS — Dark theme
+   ========================================================== */
+[data-theme="dark"] {
+  --system-white: #FFFFFF;
+  --system-black: #000000;
+
+  --strong-fg:           #FFFFFF;
+  --soft-fg:             hsla(0, 0%, 100%, 0.50);
+  --inactive-fg:         hsla(0, 0%, 100%, 0.26);
+  --strong-fg-inverted:  #000000;
+  --subdued-fg-title:    rgba(255, 255, 255, 0.55);
+  --outline:             rgba(255, 255, 255, 0.12);
+
+  --app-bg:              #000000;
+  --sheet-bg:            #171717;
+  --nav-bg:              #0F0F0F;
+  --default-bg:          #171717;
+  --inactive-bg:         rgba(255, 255, 255, 0.04);
+  --soft-bg:             #0F0F0F;
+  --strong-bg:           #FFFFFF;
+
+  --surface-high-bg-interactive: #171717;
+  --surface-medium-bg:           #0F0F0F;
+  --surface-high-bg-default:     #222120; /* SLATE.L12 */
+
+  --soft-bg-control:     rgba(255, 255, 255, 0.10);
+  --inactive-bg-control: rgba(255, 255, 255, 0.07);
+
+  --hover:               rgba(255, 255, 255, 0.08);
+  --pressed:             rgba(255, 255, 255, 0.04);
+  --selected:            rgba(255, 255, 255, 0.08);
+  --hover-inverted:      rgba(0, 0, 0, 0.08);
+  --pressed-inverted:    rgba(0, 0, 0, 0.04);
+  --scrim:               rgba(0, 0, 0, 0.56);
+
+  --skeleton-fg:         rgba(255, 255, 255, 0.03);
+  --skeleton-bg:         rgba(255, 255, 255, 0.06);
+
+  --highlight-bg-soft:        rgba(67, 102, 157, 0.27);  /* SKY_BG.L40 @ 27% */
+  --highlight-bg-soft-solid:  #212C3B;                   /* SKY_BG.L20 */
+  --highlight-fg-strong:      #BACDF4;                   /* SKY_FG.L90 */
+  --highlight-graphic:        #5B88D9;                   /* SKY_FG.L60 */
+
+  --negative-bg-soft:         rgba(126, 55, 53, 0.32);   /* TERRACOTTA_BG.L30 @ 32% */
+  --negative-bg-soft-solid:   #3E1E1D;                   /* TERRACOTTA_BG.L20 */
+  --negative-fg-strong:       #F27868;                   /* TERRACOTTA_FG.L80 */
+  --negative-graphic:         #ED4F3C;                   /* TERRACOTTA_FG.L70 */
+
+  --neutral-bg-soft:          rgba(104, 102, 100, 0.40); /* SLATE.L40 @ 40% */
+  --neutral-bg-soft-solid:    #32302F;                   /* SLATE.L20 */
+  --neutral-fg-strong:        #F5F4F4;                   /* SLATE.L95 */
+  --neutral-graphic:          rgba(104, 102, 100, 0.40);
+
+  --positive-bg-soft:         rgba(85, 142, 82, 0.27);   /* CELERY_BG.L40 @ 27% */
+  --positive-bg-soft-solid:   #263725;                   /* CELERY_BG.L20 */
+  --positive-fg-strong:       #6DC382;                   /* CELERY_FG.L70 */
+  --positive-graphic:         #4DB565;                   /* CELERY_FG.L60 */
+
+  --warning-bg-soft:          rgba(174, 151, 50, 0.30);  /* LEMON_BG.L40 @ 30% */
+  --warning-bg-soft-solid:    #433A19;                   /* LEMON_BG.L20 */
+  --warning-fg-strong:        #F5DD56;                   /* LEMON_FG.L70 */
+  --warning-graphic:          #EECE2D;                   /* LEMON_FG.L60 */
+}
+
+/* ==========================================================
+   TYPE — base
+   ========================================================== */
+:root {
+  --font-sans: "Wealthsimple Sans", -apple-system, BlinkMacSystemFont,
+               "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-bold:    700;
+
+  /* Canonical font sizes — keys: xxsmall → xxlarge */
+  --fs-xxsmall:  10.5px;
+  --fs-xsmall:   12px;
+  --fs-small:    14px;
+  --fs-default:  16px;
+  --fs-medium:   20px;
+  --fs-large:    25px;
+  --fs-xlarge:   32px;
+  --fs-xxlarge:  40px;
+
+  /* Canonical line heights (rounded to even px from size × ratio) */
+  --lh-xxsmall:  14px;   /* 10.5 × 1.4 → 14 */
+  --lh-xsmall:   16px;   /* 12   × 1.4 → 16 */
+  --lh-small:    20px;   /* 14   × 1.4 → 20 */
+  --lh-default:  22px;   /* 16   × 1.4 → 22 */
+  --lh-medium:   28px;   /* 20   × 1.4 → 28 */
+  --lh-large:    30px;   /* 25   × 1.2 → 30 */
+  --lh-xlarge:   38px;   /* 32   × 1.2 → 38 */
+  --lh-xxlarge:  48px;   /* 40   × 1.2 → 48 */
+
+  /* Letter spacing — body sizes (size × ratio, in px) */
+  --ls-xxsmall:  0.21px;   /* × 0.020 */
+  --ls-xsmall:   0.18px;   /* × 0.015 */
+  --ls-small:    0.14px;   /* × 0.010 */
+  --ls-default:  0.016px;  /* × 0.001 */
+  --ls-medium:  -0.20px;   /* × -0.010 */
+  --ls-large:   -0.25px;   /* × -0.010 */
+  --ls-xlarge:  -0.64px;   /* × -0.020 */
+  --ls-xxlarge: -0.80px;   /* × -0.020 */
+
+  /* Letter spacing — uppercase variants */
+  --ls-uc-xxsmall:  0.88px;   /* matches "Date label" spec (Letter-Spacing-Uppercase-xxsmall) */
+  --ls-uc-xsmall:   0.96px;
+  --ls-uc-small:    1.12px;
+  --ls-uc-default:  1.28px;
+  --ls-uc-medium:   1.20px;   /* × 0.06 */
+  --ls-uc-large:    1.50px;
+  --ls-uc-xlarge:   1.28px;   /* × 0.04 */
+  --ls-uc-xxlarge:  1.60px;
+}
+
+/* ----------------------------------------------------------
+   OpenType features — defaults
+
+   Default for ALL text in the system:
+       font-feature-settings: 'case';
+
+   This enables case-sensitive forms — punctuation that sits
+   beside uppercase letters (parens, brackets, hyphens, math
+   symbols) is shifted up to align optically with caps. It is
+   harmless on lowercase text, so we apply it globally rather
+   than scoping it.
+
+   We DO NOT default to `font-variant-numeric: tabular-nums`.
+   Wealthsimple Sans Display's proportional figures are the
+   intended default — they read as natural prose. Tabular
+   figures look mechanical in body copy and shouldn't be the
+   global default. Use the `.ws-tnum` utility (below) only
+   where digit columns need to align vertically — see
+   preview/type-numerals.html for the rule set.
+   ---------------------------------------------------------- */
+html, body {
+  font-feature-settings: 'case';
+}
+
+/* Tabular figures — opt-in only, for vertically-aligned digit columns.
+   Do NOT use on running text, hero numbers, or single-line stats. */
+.ws-tnum {
+  font-feature-settings: 'case', 'tnum';
+  font-variant-numeric: tabular-nums;   /* fallback; 'case' is preserved via shorthand */
+}
+
+/* Base text classes — direct mapping to the canonical scale */
+.ws-text-xxlarge { font-family: var(--font-sans); font-size: var(--fs-xxlarge); line-height: var(--lh-xxlarge); letter-spacing: var(--ls-xxlarge); }
+.ws-text-xlarge  { font-family: var(--font-sans); font-size: var(--fs-xlarge);  line-height: var(--lh-xlarge);  letter-spacing: var(--ls-xlarge); }
+.ws-text-large   { font-family: var(--font-sans); font-size: var(--fs-large);   line-height: var(--lh-large);   letter-spacing: var(--ls-large); }
+.ws-text-medium  { font-family: var(--font-sans); font-size: var(--fs-medium);  line-height: var(--lh-medium);  letter-spacing: var(--ls-medium); }
+.ws-text-default { font-family: var(--font-sans); font-size: var(--fs-default); line-height: var(--lh-default); letter-spacing: var(--ls-default); }
+.ws-text-small   { font-family: var(--font-sans); font-size: var(--fs-small);   line-height: var(--lh-small);   letter-spacing: var(--ls-small); }
+.ws-text-xsmall  { font-family: var(--font-sans); font-size: var(--fs-xsmall);  line-height: var(--lh-xsmall);  letter-spacing: var(--ls-xsmall); }
+.ws-text-xxsmall { font-family: var(--font-sans); font-size: var(--fs-xxsmall); line-height: var(--lh-xxsmall); letter-spacing: var(--ls-xxsmall); }
+
+/* ==========================================================
+   TYPE — semantic header roles
+   These compose base size tokens with the canonical role
+   (weight, color, transform) so callers reach for the
+   intent rather than the size.
+   ========================================================== */
+.ws-text-page-header {
+  font-family: var(--font-sans);
+  font-size: var(--fs-large);     /* 25 */
+  line-height: var(--lh-large);   /* 30 */
+  letter-spacing: var(--ls-large);/* -0.25 */
+  font-weight: var(--fw-medium);  /* 500 */
+  color: var(--strong-fg);
+}
+.ws-text-section-header {
+  font-family: var(--font-sans);
+  font-size: var(--fs-medium);    /* 20 */
+  line-height: var(--lh-medium);  /* 28 */
+  letter-spacing: var(--ls-medium);/* -0.20 */
+  font-weight: var(--fw-medium);  /* 500 */
+  color: var(--strong-fg);
+}
+.ws-text-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xsmall);    /* 12 */
+  line-height: var(--lh-xsmall);  /* 16 */
+  letter-spacing: var(--ls-xsmall);/* +0.18 */
+  font-weight: var(--fw-bold);    /* 700 */
+  color: var(--soft-fg);
+}
+.ws-text-date-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xxsmall);     /* 10.5 */
+  line-height: var(--lh-xxsmall);   /* 14 */
+  letter-spacing: var(--ls-uc-xxsmall); /* +0.88 — uppercase variant */
+  font-weight: var(--fw-bold);      /* 700 */
+  text-transform: uppercase;
+  color: var(--soft-fg);
+}
+
+/* Spacing scale */
+:root {
+  --space-0:  0px;
+  --space-4:  4px;
+  --space-6:  6px;
+  --space-8:  8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-56: 56px;
+  --space-64: 64px;
+  --space-72: 72px;
+
+  /* Border radius */
+  --radius-0:  0px;
+  --radius-4:  4px;
+  --radius-8:  8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-card: 20px; /* cardDefault */
+  --radius-24: 24px;
+  --radius-32: 32px;
+  --radius-full: 9999px;
+
+  /* Motion — duration */
+  --dur-instant:    0ms;
+  --dur-fast-10:    70ms;
+  --dur-fast-20:    140ms;
+  --dur-moderate-10: 210ms;
+  --dur-moderate-20: 290ms;
+  --dur-slow-10:    400ms;
+  --dur-slow-20:    700ms;
+
+  /* Motion — easing */
+  --ease-linear:           cubic-bezier(0, 0, 0, 0);
+  --ease-expressive:       cubic-bezier(0.8, 0, 0.2, 1);
+  --ease-expressive-enter: cubic-bezier(0.1, 0, 0, 1);
+  --ease-expressive-exit:  cubic-bezier(0.5, 0, 0.9, 0.03);
+  --ease-functional:       cubic-bezier(0.33, 0, 0.67, 1);
+  --ease-functional-enter: cubic-bezier(0.05, 0.2, 0.5, 1);
+  --ease-functional-exit:  cubic-bezier(0.3, 0, 1, 0.8);
+
+  /* Press scale (for tap feedback) */
+  --scale-83: 0.83;
+  --scale-85: 0.85;
+  --scale-90: 0.90;
+  --scale-92: 0.92;
+  --scale-95: 0.95;
+  --scale-97: 0.97;
+
+  /* Button geometry — from button.styles.ts */
+  --btn-radius:        36px;
+  --btn-border-width:  2px;
+  --btn-h-large:       60px;
+  --btn-h-medium:      48px;
+  --btn-h-small:       32px;
+}
+
+/* Button recipe — variants × sizes (mirrors DSButton API).
+   Sizing per spec:
+   - large:  60h, 120 min-w, 16/24 padding, 16/22 +0.02 type
+   - medium: 48h, 96  min-w, 8/24 padding,  16/22 +0.02 type
+   - small:  32h, 76  min-w, 4/16 padding,  14/20 +0.14 type
+   All sizes: 700 weight, 4px gap (icon ↔ label). */
+.ws-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 4px;
+  border-radius: var(--btn-radius);
+  border: var(--btn-border-width) solid transparent;
+  /* css equivalent of borderCurve: continuous (iOS squircle) */
+  border-curve: continuous;
+  -webkit-border-curve: continuous;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: transform var(--dur-fast-10) var(--ease-functional);
+}
+.ws-button:active { transform: scale(var(--scale-95)); }
+.ws-button[data-size="large"]  { min-height: 60px; min-width: 120px; padding: 16px 24px; font-size: 16px; line-height: 22px; letter-spacing: 0.02px; }
+.ws-button[data-size="medium"] { min-height: 48px; min-width: 96px;  padding: 8px 24px;  font-size: 16px; line-height: 22px; letter-spacing: 0.02px; }
+.ws-button[data-size="small"]  { min-height: 32px; max-height: 32px; min-width: 76px; padding: 4px 16px; font-size: 14px; line-height: 20px; letter-spacing: 0.14px; }
+
+/* High-emphasis: strong-bg base with a top-down white-overlay gradient (30% → 0%). */
+.ws-button[data-variant="high-emphasis"]   { background: linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), var(--strong-bg); border-color: var(--strong-bg); color: var(--strong-fg-inverted); }
+.ws-button[data-variant="medium-emphasis"] { background: var(--soft-bg-control);    border-color: transparent;                color: var(--strong-fg); }
+.ws-button[data-variant="low-emphasis"]    { background: var(--default-bg);         border-color: var(--outline);             color: var(--strong-fg); }
+.ws-button[data-variant="destructive"]     { background: var(--negative-bg-soft);   border-color: transparent;                color: var(--negative-fg-strong); }
+.ws-button[data-variant="highlight"]       { background: var(--highlight-bg-soft);  border-color: transparent;                color: var(--highlight-fg-strong); }
+.ws-button[data-variant="positive"]        { background: var(--positive-bg-soft);   border-color: transparent;                color: var(--positive-fg-strong); }
+.ws-button[data-variant="warning"]         { background: var(--warning-bg-soft);    border-color: transparent;                color: var(--warning-fg-strong); }
+.ws-button[data-state="inactive"]          { background: var(--inactive-bg-control); border-color: transparent; color: var(--inactive-fg); }
+
+/* ==========================================================
+   CARD — DSCard recipe
+   variants: high-emphasis | medium-emphasis | low-emphasis | plain
+   colorScheme (medium-emphasis only): neutral | highlight | positive | warning | negative
+   ========================================================== */
+.ws-card {
+  position: relative;
+  display: block;
+  border-radius: 20px;          /* cardDefault */
+  padding: 16px;                /* spacing/16 */
+  background: var(--default-bg);
+  /* css equivalent of borderCurve: continuous (iOS squircle) */
+  border-curve: continuous;
+  -webkit-border-curve: continuous;
+}
+
+/* HIGH EMPHASIS — lifted surface: drop shadow + inner highlight + outer hairline (all box-shadow). */
+.ws-card[data-variant="high-emphasis"] {
+  background: var(--surface-high-bg-interactive);
+  box-shadow:
+    0 4px 8px 0 hsla(0, 0%, 0%, 0.05),
+    inset 0 0 0 0.75px hsla(0, 0%, 100%, 0.75),
+    0 0 0 0.75px hsla(0, 0%, 0%, 0.05);
+}
+[data-theme="dark"] .ws-card[data-variant="high-emphasis"] {
+  background: var(--surface-high-bg-interactive);
+  box-shadow:
+    0 4px 8px 0 hsla(0, 0%, 0%, 0.30),
+    inset 0 0 0 0.75px hsla(0, 0%, 100%, 0.10),
+    0 0 0 0.75px hsla(0, 0%, 0%, 1);
+}
+
+/* MEDIUM EMPHASIS · neutral (default) — recessed surface, hairline outer + inner border, no shadow. */
+.ws-card[data-variant="medium-emphasis"] {
+  background: var(--surface-medium-bg);
+  box-shadow:
+    0 0 0 0.75px hsla(0, 0%, 100%, 0.40),
+    inset 0 0 0 0.75px hsla(0, 0%, 0%, 0.05);
+}
+[data-theme="dark"] .ws-card[data-variant="medium-emphasis"] {
+  box-shadow:
+    0 0 0 0.75px hsla(0, 0%, 0%, 1),
+    inset 0 0 0 0.75px hsla(0, 0%, 100%, 0.10);
+}
+/* MEDIUM EMPHASIS · color schemes — bg uses scheme bg-soft, text uses scheme fg-strong, no chrome */
+.ws-card[data-variant="medium-emphasis"][data-scheme="highlight"] { background: var(--highlight-bg-soft);  box-shadow: none; color: var(--highlight-fg-strong); }
+.ws-card[data-variant="medium-emphasis"][data-scheme="positive"]  { background: var(--positive-bg-soft);   box-shadow: none; color: var(--positive-fg-strong); }
+.ws-card[data-variant="medium-emphasis"][data-scheme="warning"]   { background: var(--warning-bg-soft);    box-shadow: none; color: var(--warning-fg-strong); }
+.ws-card[data-variant="medium-emphasis"][data-scheme="negative"]  { background: var(--negative-bg-soft);   box-shadow: none; color: var(--negative-fg-strong); }
+/* solid backgroundType — same hue, opaque solid */
+.ws-card[data-variant="medium-emphasis"][data-bg="solid"][data-scheme="highlight"] { background: var(--highlight-bg-soft-solid); }
+.ws-card[data-variant="medium-emphasis"][data-bg="solid"][data-scheme="positive"]  { background: var(--positive-bg-soft-solid); }
+.ws-card[data-variant="medium-emphasis"][data-bg="solid"][data-scheme="warning"]   { background: var(--warning-bg-soft-solid); }
+.ws-card[data-variant="medium-emphasis"][data-bg="solid"][data-scheme="negative"]  { background: var(--negative-bg-soft-solid); }
+
+/* LOW EMPHASIS — visually identical to medium (same surface + chrome); semantic distinction only. */
+.ws-card[data-variant="low-emphasis"] {
+  background: var(--surface-medium-bg);
+  box-shadow:
+    0 0 0 0.75px hsla(0, 0%, 100%, 0.40),
+    inset 0 0 0 0.75px hsla(0, 0%, 0%, 0.05);
+}
+[data-theme="dark"] .ws-card[data-variant="low-emphasis"] {
+  box-shadow:
+    0 0 0 0.75px hsla(0, 0%, 0%, 1),
+    inset 0 0 0 0.75px hsla(0, 0%, 100%, 0.10);
+}
+
+/* PLAIN — strips all chrome; container only, useful for grouping without visuals */
+.ws-card[data-variant="plain"] {
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Pressable cards: scale-95 on press (default DSCard pressAnimation) */
+.ws-card[data-pressable="true"] { cursor: pointer; transition: transform var(--dur-fast-10, 70ms) var(--ease-functional, cubic-bezier(0.4, 0, 0.2, 1)); }
+.ws-card[data-pressable="true"]:active { transform: scale(0.95); }
+
+/* DSCard sub-component layout helpers */
+.ws-card-content       { display: flex; flex-direction: row; gap: 12px; align-items: center; }
+.ws-card-content-left  { display: flex; flex: 1; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 4px; min-width: 0; }
+.ws-card-content-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ws-card-image         { display: flex; align-items: flex-end; flex-grow: 1; }
+.ws-card-close         { position: absolute; top: 8px; right: 8px; }
+
+/* ==========================================================
+   DATA VIZ — tokens for charts (pies, bars, lines, areas)
+   Source: semantic-layer-data-viz.ts
+   Three families:
+     • categorical-01..06 — distinct series (max 6)
+     • sequential-{hue}-01..10 — ordered ramps per hue
+     • cone-low | cone-medium | cone-high — projection cones
+   ========================================================== */
+:root {
+  /* Categorical — 6-step palette for distinct, unordered series */
+  --dv-categorical-01: var(--sky-fg-l60);        /* SKY    L60 */
+  --dv-categorical-02: var(--lilac-fg-l70);      /* LILAC  L70 */
+  --dv-categorical-03: var(--aubergine-fg-l70);  /* AUBERGINE L70 */
+  --dv-categorical-04: var(--lemon-fg-l60);      /* LEMON  L60 */
+  --dv-categorical-05: var(--celery-fg-l50);     /* CELERY L50 */
+  --dv-categorical-06: var(--apricot-fg-l70);    /* APRICOT L70 */
+
+  /* Cone — 3-step low/medium/high (projection bands) */
+  --dv-cone-low:    var(--celery-fg-l95);
+  --dv-cone-medium: var(--celery-fg-l70);
+  --dv-cone-high:   var(--celery-fg-l50);
+
+  /* Special graphics */
+  --dv-core-graphic:    var(--sky-fg-l60);
+  --dv-neutral-graphic: rgba(175, 170, 167, 0.24);    /* SLATE.L70 @ 24% */
+  --dv-performance-gradient-positive: #53A14F;
+}
+[data-theme="dark"] {
+  --dv-categorical-01: var(--sky-fg-l60);
+  --dv-categorical-02: var(--lilac-fg-l70);
+  --dv-categorical-03: var(--aubergine-fg-l70);
+  --dv-categorical-04: var(--lemon-fg-l60);
+  --dv-categorical-05: var(--celery-fg-l60);     /* slight bump in dark mode */
+  --dv-categorical-06: var(--apricot-fg-l80);    /* slight bump in dark mode */
+
+  --dv-cone-low:    var(--celery-fg-l20);
+  --dv-cone-medium: var(--celery-fg-l40);
+  --dv-cone-high:   var(--celery-fg-l50);
+
+  --dv-core-graphic:    var(--sky-fg-l60);
+  --dv-neutral-graphic: rgba(104, 102, 100, 0.40); /* SLATE.L40 @ 40% */
+  --dv-performance-gradient-positive: #364D27;
+}
+
+/* Sequential ramps inherit from foundation FG scales — alias only.
+   Light theme: 01 = lightest, 10 = darkest (L95 → L10).
+   Dark  theme: 01 = darkest,  10 = lightest (L10 → L95). */
+:root {
+  --dv-sky-01: var(--sky-fg-l95);  --dv-sky-02: var(--sky-fg-l90);  --dv-sky-03: var(--sky-fg-l80);  --dv-sky-04: var(--sky-fg-l70);  --dv-sky-05: var(--sky-fg-l60);
+  --dv-sky-06: var(--sky-fg-l50);  --dv-sky-07: var(--sky-fg-l40);  --dv-sky-08: var(--sky-fg-l30);  --dv-sky-09: var(--sky-fg-l20);  --dv-sky-10: var(--sky-fg-l10);
+
+  --dv-lilac-01: var(--lilac-fg-l95);  --dv-lilac-02: var(--lilac-fg-l90);  --dv-lilac-03: var(--lilac-fg-l80);  --dv-lilac-04: var(--lilac-fg-l70);  --dv-lilac-05: var(--lilac-fg-l60);
+  --dv-lilac-06: var(--lilac-fg-l50);  --dv-lilac-07: var(--lilac-fg-l40);  --dv-lilac-08: var(--lilac-fg-l30);  --dv-lilac-09: var(--lilac-fg-l20);  --dv-lilac-10: var(--lilac-fg-l10);
+
+  --dv-aubergine-01: var(--aubergine-fg-l95);  --dv-aubergine-02: var(--aubergine-fg-l90);  --dv-aubergine-03: var(--aubergine-fg-l80);  --dv-aubergine-04: var(--aubergine-fg-l70);  --dv-aubergine-05: var(--aubergine-fg-l60);
+  --dv-aubergine-06: var(--aubergine-fg-l50);  --dv-aubergine-07: var(--aubergine-fg-l40);  --dv-aubergine-08: var(--aubergine-fg-l30);  --dv-aubergine-09: var(--aubergine-fg-l20);  --dv-aubergine-10: var(--aubergine-fg-l10);
+
+  --dv-apricot-01: var(--apricot-fg-l95);  --dv-apricot-02: var(--apricot-fg-l90);  --dv-apricot-03: var(--apricot-fg-l80);  --dv-apricot-04: var(--apricot-fg-l70);  --dv-apricot-05: var(--apricot-fg-l60);
+  --dv-apricot-06: var(--apricot-fg-l50);  --dv-apricot-07: var(--apricot-fg-l40);  --dv-apricot-08: var(--apricot-fg-l30);  --dv-apricot-09: var(--apricot-fg-l20);  --dv-apricot-10: var(--apricot-fg-l10);
+
+  --dv-lemon-01: var(--lemon-fg-l95);  --dv-lemon-02: var(--lemon-fg-l90);  --dv-lemon-03: var(--lemon-fg-l80);  --dv-lemon-04: var(--lemon-fg-l70);  --dv-lemon-05: var(--lemon-fg-l60);
+  --dv-lemon-06: var(--lemon-fg-l50);  --dv-lemon-07: var(--lemon-fg-l40);  --dv-lemon-08: var(--lemon-fg-l30);  --dv-lemon-09: var(--lemon-fg-l20);  --dv-lemon-10: var(--lemon-fg-l10);
+
+  --dv-celery-01: var(--celery-fg-l95);  --dv-celery-02: var(--celery-fg-l90);  --dv-celery-03: var(--celery-fg-l80);  --dv-celery-04: var(--celery-fg-l70);  --dv-celery-05: var(--celery-fg-l60);
+  --dv-celery-06: var(--celery-fg-l50);  --dv-celery-07: var(--celery-fg-l40);  --dv-celery-08: var(--celery-fg-l30);  --dv-celery-09: var(--celery-fg-l20);  --dv-celery-10: var(--celery-fg-l10);
+
+  --dv-terracotta-01: var(--terracotta-fg-l95);  --dv-terracotta-02: var(--terracotta-fg-l90);  --dv-terracotta-03: var(--terracotta-fg-l80);  --dv-terracotta-04: var(--terracotta-fg-l70);  --dv-terracotta-05: var(--terracotta-fg-l60);
+  --dv-terracotta-06: var(--terracotta-fg-l50);  --dv-terracotta-07: var(--terracotta-fg-l40);  --dv-terracotta-08: var(--terracotta-fg-l30);  --dv-terracotta-09: var(--terracotta-fg-l20);  --dv-terracotta-10: var(--terracotta-fg-l10);
+}
+[data-theme="dark"] {
+  --dv-sky-01: var(--sky-fg-l10);  --dv-sky-02: var(--sky-fg-l20);  --dv-sky-03: var(--sky-fg-l30);  --dv-sky-04: var(--sky-fg-l40);  --dv-sky-05: var(--sky-fg-l50);
+  --dv-sky-06: var(--sky-fg-l60);  --dv-sky-07: var(--sky-fg-l70);  --dv-sky-08: var(--sky-fg-l80);  --dv-sky-09: var(--sky-fg-l90);  --dv-sky-10: var(--sky-fg-l95);
+
+  --dv-lilac-01: var(--lilac-fg-l10);  --dv-lilac-02: var(--lilac-fg-l20);  --dv-lilac-03: var(--lilac-fg-l30);  --dv-lilac-04: var(--lilac-fg-l40);  --dv-lilac-05: var(--lilac-fg-l50);
+  --dv-lilac-06: var(--lilac-fg-l60);  --dv-lilac-07: var(--lilac-fg-l70);  --dv-lilac-08: var(--lilac-fg-l80);  --dv-lilac-09: var(--lilac-fg-l90);  --dv-lilac-10: var(--lilac-fg-l95);
+
+  --dv-aubergine-01: var(--aubergine-fg-l10);  --dv-aubergine-02: var(--aubergine-fg-l20);  --dv-aubergine-03: var(--aubergine-fg-l30);  --dv-aubergine-04: var(--aubergine-fg-l40);  --dv-aubergine-05: var(--aubergine-fg-l50);
+  --dv-aubergine-06: var(--aubergine-fg-l60);  --dv-aubergine-07: var(--aubergine-fg-l70);  --dv-aubergine-08: var(--aubergine-fg-l80);  --dv-aubergine-09: var(--aubergine-fg-l90);  --dv-aubergine-10: var(--aubergine-fg-l95);
+
+  --dv-apricot-01: var(--apricot-fg-l10);  --dv-apricot-02: var(--apricot-fg-l20);  --dv-apricot-03: var(--apricot-fg-l30);  --dv-apricot-04: var(--apricot-fg-l40);  --dv-apricot-05: var(--apricot-fg-l50);
+  --dv-apricot-06: var(--apricot-fg-l60);  --dv-apricot-07: var(--apricot-fg-l70);  --dv-apricot-08: var(--apricot-fg-l80);  --dv-apricot-09: var(--apricot-fg-l90);  --dv-apricot-10: var(--apricot-fg-l95);
+
+  --dv-lemon-01: var(--lemon-fg-l10);  --dv-lemon-02: var(--lemon-fg-l20);  --dv-lemon-03: var(--lemon-fg-l30);  --dv-lemon-04: var(--lemon-fg-l40);  --dv-lemon-05: var(--lemon-fg-l50);
+  --dv-lemon-06: var(--lemon-fg-l60);  --dv-lemon-07: var(--lemon-fg-l70);  --dv-lemon-08: var(--lemon-fg-l80);  --dv-lemon-09: var(--lemon-fg-l90);  --dv-lemon-10: var(--lemon-fg-l95);
+
+  --dv-celery-01: var(--celery-fg-l10);  --dv-celery-02: var(--celery-fg-l20);  --dv-celery-03: var(--celery-fg-l30);  --dv-celery-04: var(--celery-fg-l40);  --dv-celery-05: var(--celery-fg-l50);
+  --dv-celery-06: var(--celery-fg-l60);  --dv-celery-07: var(--celery-fg-l70);  --dv-celery-08: var(--celery-fg-l80);  --dv-celery-09: var(--celery-fg-l90);  --dv-celery-10: var(--celery-fg-l95);
+
+  --dv-terracotta-01: var(--terracotta-fg-l10);  --dv-terracotta-02: var(--terracotta-fg-l20);  --dv-terracotta-03: var(--terracotta-fg-l30);  --dv-terracotta-04: var(--terracotta-fg-l40);  --dv-terracotta-05: var(--terracotta-fg-l50);
+  --dv-terracotta-06: var(--terracotta-fg-l60);  --dv-terracotta-07: var(--terracotta-fg-l70);  --dv-terracotta-08: var(--terracotta-fg-l80);  --dv-terracotta-09: var(--terracotta-fg-l90);  --dv-terracotta-10: var(--terracotta-fg-l95);
+}
+
+/* (semantic role classes removed — use ws-text-* + weight utilities directly) */
+
+/* ============================================================
+ * SEGMENTED CONTROL — DSSegmentedControl
+ * Variants: default | ghost
+ * Sizes:    medium  | small
+ * States:   active  | inactive | disabled
+ * Indicator slides between segments via transform/width.
+ * Source:   uploads/segmented-control-text.css
+ * ============================================================ */
+
+.ws-segmented {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 1000px;
+  padding: 4px;
+  font-family: var(--font-sans);
+  background: var(--surface-medium-bg);
+}
+
+.ws-segmented[data-variant="ghost"] {
+  background: transparent;
+  padding: 0;
+  gap: 4px;
+}
+.ws-segmented[data-variant="ghost"][data-size="small"] { gap: 2px; }
+
+.ws-segmented[data-fill="true"] {
+  display: flex;
+  width: 100%;
+}
+.ws-segmented[data-fill="true"] > .ws-segment { flex: 1 1 0; }
+
+/* ----- Sliding indicator (the white floating pill) ----- */
+.ws-segment-indicator {
+  position: absolute;
+  top: 4px;                /* mirrors track padding */
+  left: 0;
+  height: calc(100% - 8px);
+  border-radius: 1000px;
+  pointer-events: none;
+  background: #FFFFFF;
+  /* spring-ish ease — Wealthsimple's "expressive" curve */
+  transition:
+    transform var(--dur-moderate-10, 210ms) var(--ease-expressive, cubic-bezier(0.32, 0.72, 0, 1)),
+    width     var(--dur-moderate-10, 210ms) var(--ease-expressive, cubic-bezier(0.32, 0.72, 0, 1));
+  will-change: transform, width;
+  /* Default variant: 0.75px outline + soft shadow + 0.75px inner highlight */
+  box-shadow:
+    0 4px 8px 0 hsla(0, 0%, 0%, 0.05),
+    0 0 0 0.75px hsla(0, 0%, 0%, 0.05),
+    inset 0 0 0 0.75px hsla(0, 0%, 100%, 0.75);
+}
+
+/* Ghost variant: full-height (no inset 4px), 1px rings, slightly stronger drop */
+.ws-segmented[data-variant="ghost"] .ws-segment-indicator {
+  top: 0;
+  height: 100%;
+  box-shadow:
+    0 4px 8px 0 hsla(0, 0%, 0%, 0.06),
+    0 0 0 1px hsla(0, 0%, 0%, 0.05),
+    inset 0 0 0 1px hsla(0, 0%, 100%, 0.75);
+}
+
+/* Pre-layout state — hide indicator until JS positions it (avoids a flash at left:0) */
+.ws-segment-indicator:not([data-ready]) { opacity: 0; }
+
+/* Indicator color in dark theme */
+[data-theme="dark"] .ws-segment-indicator {
+  background: var(--surface-high-bg-interactive);
+  box-shadow:
+    0 4px 8px 0 hsla(0, 0%, 0%, 0.30),
+    0 0 0 0.75px hsla(0, 0%, 100%, 0.06),
+    inset 0 0 0 0.75px hsla(0, 0%, 100%, 0.06);
+}
+
+/* ----- The segment pill ----- */
+.ws-segment {
+  position: relative;
+  z-index: 1;                    /* always above the indicator */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1000px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--soft-fg);
+  transition: color var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* ----- Sizes ----- */
+.ws-segmented[data-size="medium"] .ws-segment {
+  padding: 8px 16px;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+}
+.ws-segmented[data-size="small"] .ws-segment {
+  padding: 4px 16px;
+  max-height: 24px;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.18px;
+}
+.ws-segmented[data-variant="ghost"][data-size="small"] .ws-segment {
+  padding: 8px 16px;
+  max-height: 32px;
+}
+
+/* ----- Active state — color only, indicator carries the visual ----- */
+.ws-segment[aria-selected="true"],
+.ws-segment[data-active="true"] {
+  color: var(--strong-fg);
+}
+
+/* ----- Disabled ----- */
+.ws-segmented[data-disabled="true"],
+.ws-segmented[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ----- Reduced motion ----- */
+@media (prefers-reduced-motion: reduce) {
+  .ws-segment-indicator { transition: none; }
+}
+
+/* ----- Dark theme track ----- */
+[data-theme="dark"] .ws-segmented {
+  background: var(--surface-medium-bg);
+}
+
+
+/* ============================================================
+ * UNIVERSAL ROW — DSRowUniversal (simplified)
+ * Slots:    leading (avatar/icon) | content (primary + secondary text)
+ *           value   (primary + secondary value, right-aligned) | trailing (chevron)
+ * Variants: default | dim (lower-emphasis primary text)
+ * Sizes:    medium (default)
+ * Sources:  ds-components/src/components/row-universal
+ * ============================================================ */
+
+.ws-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  cursor: default;
+}
+
+/* Pressable rows (with chevron) — keep cursor + hover affordance */
+.ws-row[data-pressable="true"] {
+  cursor: pointer;
+  transition: background-color var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1));
+}
+.ws-row[data-pressable="true"]:hover { background: hsla(0, 0%, 0%, 0.03); }
+.ws-row[data-pressable="true"]:active { background: hsla(0, 0%, 0%, 0.06); }
+[data-theme="dark"] .ws-row[data-pressable="true"]:hover { background: hsla(0, 0%, 100%, 0.04); }
+[data-theme="dark"] .ws-row[data-pressable="true"]:active { background: hsla(0, 0%, 100%, 0.08); }
+
+/* ----- Leading slot (avatar / icon) ----- */
+.ws-row__leading {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The avatar is a circle. Two emphases match the reference image:
+   filled (strong-bg surface, white icon) and soft (medium-bg surface, soft icon). */
+.ws-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 1000px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: var(--surface-medium-bg);
+  color: var(--soft-fg);
+}
+.ws-avatar[data-emphasis="filled"] {
+  background: var(--strong-bg);
+  color: var(--strong-bg-fg, #FFFFFF);
+}
+.ws-avatar[data-emphasis="soft"] {
+  background: var(--surface-medium-bg);
+  color: var(--soft-fg);
+}
+.ws-avatar > svg, .ws-avatar > img {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+/* Logo avatars use the full 40px (no inset) and clip to the circle. */
+.ws-avatar[data-kind="logo"] > img,
+.ws-avatar[data-kind="logo"] > svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ----- Content slot (left text stack) ----- */
+.ws-row__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ws-row__primary {
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  font-weight: 500;
+  color: var(--strong-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-row__secondary {
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.07px;
+  color: var(--soft-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dim variant — primary text in soft-fg (e.g. for cancelled / inactive items) */
+.ws-row[data-variant="dim"] .ws-row__primary { color: var(--soft-fg); }
+
+/* ----- Value slot (right text stack) ----- */
+.ws-row__value {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  text-align: right;
+  margin-left: auto;
+}
+.ws-row__value-primary {
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  font-weight: 500;
+  color: var(--strong-fg);
+}
+.ws-row__value-secondary {
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.07px;
+  color: var(--soft-fg);
+}
+.ws-row[data-variant="dim"] .ws-row__value-primary { color: var(--soft-fg); }
+
+/* Numeric values use the default proportional figures, like the rest of the system. */
+
+/* ----- Trailing slot (chevron) ----- */
+.ws-row__trailing {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--soft-fg);
+  margin-left: 4px;
+}
+.ws-row__trailing > svg { width: 16px; height: 16px; display: block; }
+
+/* ----- Skeleton state ----- */
+.ws-row[data-loading="true"] .ws-row__primary,
+.ws-row[data-loading="true"] .ws-row__secondary,
+.ws-row[data-loading="true"] .ws-row__value-primary,
+.ws-row[data-loading="true"] .ws-row__value-secondary {
+  color: transparent;
+  background: var(--surface-medium-bg);
+  border-radius: 6px;
+  height: 12px;
+  min-width: 60px;
+}
+.ws-row[data-loading="true"] .ws-row__primary { height: 14px; min-width: 120px; }
+.ws-row[data-loading="true"] .ws-row__value-primary { height: 14px; min-width: 60px; }
+.ws-row[data-loading="true"] .ws-avatar { background: var(--surface-medium-bg); color: transparent; }
+.ws-row[data-loading="true"] .ws-row__trailing { visibility: hidden; }
+
+
+/* ============================================================
+ * TAG — DSTag
+ * Pill-shaped status / category label.
+ * Schemes: neutral (default) | highlight | positive | warning | negative
+ * Bg variants: soft (translucent, default) | solid (opaque tint)
+ * Sizes: medium (default) | large
+ * Text is always sentence case, weight 700.
+ * ============================================================ */
+
+.ws-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 1000px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.07px;
+  white-space: nowrap;
+  background: var(--neutral-bg-soft);
+  color: var(--neutral-fg-strong);
+  border: 0;
+}
+
+/* Sizes — large adds vertical padding + horizontal padding + 16/22 type */
+.ws-tag[data-size="large"] {
+  padding: 8px 16px;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  gap: 6px;
+}
+
+/* Schemes — soft (default translucent) */
+.ws-tag[data-scheme="neutral"]   { background: var(--neutral-bg-soft);   color: var(--neutral-fg-strong); }
+.ws-tag[data-scheme="highlight"] { background: var(--highlight-bg-soft); color: var(--highlight-fg-strong); }
+.ws-tag[data-scheme="positive"]  { background: var(--positive-bg-soft);  color: var(--positive-fg-strong); }
+.ws-tag[data-scheme="warning"]   { background: var(--warning-bg-soft);   color: var(--warning-fg-strong); }
+.ws-tag[data-scheme="negative"]  { background: var(--negative-bg-soft);  color: var(--negative-fg-strong); }
+
+/* Solid variant — opaque tint */
+.ws-tag[data-bg="solid"][data-scheme="neutral"]   { background: var(--neutral-bg-soft-solid); }
+.ws-tag[data-bg="solid"][data-scheme="highlight"] { background: var(--highlight-bg-soft-solid); }
+.ws-tag[data-bg="solid"][data-scheme="positive"]  { background: var(--positive-bg-soft-solid); }
+.ws-tag[data-bg="solid"][data-scheme="warning"]   { background: var(--warning-bg-soft-solid); }
+.ws-tag[data-bg="solid"][data-scheme="negative"]  { background: var(--negative-bg-soft-solid); }
+
+/* Leading icon */
+.ws-tag > svg { width: 1em; height: 1em; flex: 0 0 auto; display: block; }
+.ws-tag[data-size="large"] > svg { width: 20px; height: 20px; }
+
+
+/* ============================================================
+ * BANNER — DSBanner
+ * Inline status / advisory message. Slots: leading icon, title,
+ * body, optional call-to-action link, dismiss button.
+ * Schemes: neutral (default) | highlight | positive | warning | negative
+ * ============================================================ */
+
+.ws-banner {
+  display: grid;
+  grid-template-columns: 24px 1fr 20px;
+  column-gap: 12px;
+  row-gap: 4px;
+  align-items: start;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--neutral-bg-soft);
+  color: var(--neutral-fg-strong);
+  font-family: var(--font-sans);
+}
+
+.ws-banner[data-scheme="neutral"]   { background: var(--neutral-bg-soft);   color: var(--neutral-fg-strong); }
+.ws-banner[data-scheme="highlight"] { background: var(--highlight-bg-soft); color: var(--highlight-fg-strong); }
+.ws-banner[data-scheme="positive"]  { background: var(--positive-bg-soft);  color: var(--positive-fg-strong); }
+.ws-banner[data-scheme="warning"]   { background: var(--warning-bg-soft);   color: var(--warning-fg-strong); }
+.ws-banner[data-scheme="negative"]  { background: var(--negative-bg-soft);  color: var(--negative-fg-strong); }
+
+/* ----- Leading icon -----
+   The icon is a single 22px SVG that draws its own filled background shape
+   with the glyph cut out via fill-rule: evenodd. No parent disc — the SVG
+   IS the icon. Fill = scheme fg-strong, knock-outs reveal the banner's
+   bg-soft surface (so the glyph reads inverted). */
+.ws-banner__icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+.ws-banner__icon > svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  color: inherit;
+}
+
+/* ----- Body cell (title + body + cta stack) ----- */
+.ws-banner__body {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ws-banner__title {
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  font-weight: 700;
+  color: inherit;
+}
+.ws-banner__text {
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  font-weight: 400;
+  color: inherit;
+}
+.ws-banner__cta {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  align-self: flex-start;
+}
+.ws-banner__cta > svg { width: 16px; height: 16px; display: block; }
+.ws-banner__cta:hover { opacity: 0.78; }
+
+/* ----- Trailing dismiss button ----- */
+.ws-banner__close {
+  grid-column: 3;
+  grid-row: 1;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  margin-top: 1px;
+}
+.ws-banner__close > svg { width: 16px; height: 16px; display: block; }
+.ws-banner__close:hover { opacity: 0.65; }
+
+
+/* ============================================================
+ * INPUT — DSInput
+ * Text input with INLINE label (top-left, small caps), optional
+ * trailing icon (eye / clear), and helper text beneath.
+ * Shapes: rounded (default, 12px) | square (8px) | pill (fully rounded)
+ * States: default | focus (heavy black border) | filled
+ *         | warning | error | success | disabled
+ * ============================================================ */
+
+.ws-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+/* ----- The input shell ----- */
+.ws-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px 8px 16px;
+  background: var(--default-bg);
+  border-radius: 12px;
+  border: 1px solid var(--outline);
+  transition:
+    border-color var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* Shapes */
+.ws-input[data-shape="square"] { border-radius: 8px; }
+
+/* Inline-label + value stack */
+.ws-input__inner {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ws-input__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.2px;
+  font-weight: 500;
+  color: var(--soft-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-input__field {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  font-weight: 500;
+  color: var(--strong-fg);
+  padding: 0;
+  min-width: 0;
+}
+.ws-input__field::placeholder {
+  color: var(--soft-fg);
+  font-weight: 500;
+  opacity: 1;
+}
+
+/* Trailing icon area (eye, clear, status icon) */
+.ws-input__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--soft-fg);
+}
+.ws-input__icon > svg { width: 22px; height: 22px; display: block; }
+.ws-input__icon[data-action="true"] {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.ws-input__icon[data-action="true"]:hover { color: var(--strong-fg); }
+
+/* ----- States ----- */
+.ws-input:focus-within,
+.ws-input[data-state="focus"] {
+  border-color: var(--strong-fg);
+  border-width: 1.5px;
+  /* compensate for thicker border so layout doesn't shift */
+  padding-top: calc(8px - 0.5px);
+  padding-bottom: calc(8px - 0.5px);
+}
+
+.ws-input[data-state="warning"]  { border-color: var(--warning-graphic); }
+.ws-input[data-state="error"]    { border-color: var(--negative-graphic); }
+.ws-input[data-state="success"]  { border-color: var(--positive-graphic); }
+
+.ws-input[data-state="disabled"] {
+  background: var(--inactive-bg-control);
+  border-color: transparent;
+  pointer-events: none;
+}
+.ws-input[data-state="disabled"] .ws-input__field { color: var(--inactive-fg); }
+.ws-input[data-state="disabled"] .ws-input__field::placeholder { color: var(--inactive-fg); }
+.ws-input[data-state="disabled"] .ws-input__icon { color: var(--inactive-fg); }
+.ws-input[data-state="disabled"] .ws-input__label { color: var(--inactive-fg); }
+
+/* ----- Helper / message line beneath ----- */
+.ws-field__helper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0.01px;
+  font-weight: 500;
+  color: var(--soft-fg);
+  padding: 0 4px;
+}
+.ws-field__helper > svg { width: 16px; height: 16px; flex: 0 0 auto; display: block; }
+.ws-field__helper[data-state="warning"] { color: var(--warning-fg-strong); }
+.ws-field__helper[data-state="error"]   { color: var(--negative-fg-strong); }
+.ws-field__helper[data-state="success"] { color: var(--positive-fg-strong); }
+
+
+
+/* ============================================================
+ * ICON BUTTON — DSIconButton
+ * Round button containing a single icon. No label.
+ * Sizes: large (56px) | medium (40px, default)
+ * Schemes: strong (default, black filled) | neutral | white | transparent
+ *          | negative | highlight | positive | warning
+ * State: inactive (disabled)
+ * ============================================================ */
+
+.ws-icon-button {
+  --ws-ib-size: 40px;
+  --ws-ib-icon: 20px;
+  width: var(--ws-ib-size);
+  height: var(--ws-ib-size);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--strong-bg);
+  color: var(--strong-fg-inverted);
+  transition:
+    background-color var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1));
+}
+.ws-icon-button > svg {
+  width: var(--ws-ib-icon);
+  height: var(--ws-ib-icon);
+  display: block;
+}
+
+.ws-icon-button[data-size="large"]  { --ws-ib-size: 56px; --ws-ib-icon: 24px; }
+.ws-icon-button[data-size="medium"] { --ws-ib-size: 40px; --ws-ib-icon: 20px; }
+
+/* Schemes — match ws-button variant styling */
+.ws-icon-button[data-scheme="strong"] {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%),
+    var(--strong-bg);
+  color: var(--strong-fg-inverted);
+}
+.ws-icon-button[data-scheme="neutral"] {
+  background: var(--soft-bg-control);
+  color: var(--strong-fg);
+}
+.ws-icon-button[data-scheme="white"] {
+  background: var(--default-bg);
+  color: var(--strong-fg);
+  box-shadow: 0 0 0 0.75px var(--outline);
+}
+.ws-icon-button[data-scheme="transparent"] {
+  background: transparent;
+  color: var(--strong-fg);
+}
+.ws-icon-button[data-scheme="negative"] {
+  background: var(--negative-bg-soft);
+  color: var(--negative-fg-strong);
+}
+.ws-icon-button[data-scheme="highlight"] {
+  background: var(--highlight-bg-soft);
+  color: var(--highlight-fg-strong);
+}
+.ws-icon-button[data-scheme="positive"] {
+  background: var(--positive-bg-soft);
+  color: var(--positive-fg-strong);
+}
+.ws-icon-button[data-scheme="warning"] {
+  background: var(--warning-bg-soft);
+  color: var(--warning-fg-strong);
+}
+
+/* States */
+.ws-icon-button:hover { opacity: 0.86; }
+.ws-icon-button:active { transform: scale(0.96); }
+.ws-icon-button[data-state="inactive"],
+.ws-icon-button:disabled {
+  background: var(--inactive-bg-control);
+  color: var(--inactive-fg);
+  pointer-events: none;
+  box-shadow: none;
+}
+
+
+/* ============================================================
+ * KEY ACTION BUTTON — DSKeyActionButton
+ * Card-style action with icon centered on a surface and a label
+ * underneath. Two sizes:
+ *   "square" → near-square, ~22px radius (used in 4-up grids)
+ *   "wide"   → wider, ~26px radius pill-card (used in 3-up grids)
+ * Schemes:
+ *   "strong" → black filled, white icon
+ *   "white"  → default white surface, black icon (DEFAULT)
+ * State: inactive | loading
+ * ============================================================ */
+
+.ws-kab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  color: var(--strong-fg);
+  width: 100%;
+  min-width: 0;
+}
+
+.ws-kab__surface {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--default-bg);
+  color: var(--strong-fg);
+  box-shadow:
+    0 0 0 0.75px var(--outline),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 14px rgba(0, 0, 0, 0.05);
+  transition:
+    transform var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--dur-fast-20, 140ms) var(--ease-functional, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* Single fixed size */
+.ws-kab__surface {
+  height: 88px;
+  border-radius: 28px;
+}
+
+.ws-kab__surface > svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+  color: inherit;
+}
+
+.ws-kab__label {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02px;
+  font-weight: 600;
+  color: var(--strong-fg);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+/* Schemes — applied to the surface · match ws-button variant styling */
+.ws-kab[data-scheme="strong"] .ws-kab__surface {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%),
+    var(--strong-bg);
+  color: var(--strong-fg-inverted);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.10),
+    0 8px 18px rgba(0, 0, 0, 0.18);
+}
+.ws-kab[data-scheme="white"] .ws-kab__surface {
+  background: var(--default-bg);
+  color: var(--strong-fg);
+}
+
+.ws-kab:hover .ws-kab__surface { transform: translateY(-1px); }
+.ws-kab:active .ws-kab__surface { transform: scale(0.98); }
+
+.ws-kab[data-state="inactive"] {
+  pointer-events: none;
+}
+.ws-kab[data-state="inactive"] .ws-kab__surface {
+  background: var(--inactive-bg-control);
+  color: var(--inactive-fg);
+  box-shadow: 0 0 0 0.75px var(--outline);
+}
+.ws-kab[data-state="inactive"] .ws-kab__label { color: var(--inactive-fg); }
+
+/* Loading skeleton */
+.ws-kab[data-state="loading"] {
+  pointer-events: none;
+}
+.ws-kab[data-state="loading"] .ws-kab__surface {
+  background:
+    linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.45) 50%,
+      rgba(255, 255, 255, 0) 100%) var(--surface-medium-bg);
+  background-size: 200% 100%, 100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: -200% 0, 0 0;
+  animation: ws-kab-shimmer 1.4s linear infinite;
+  box-shadow: none;
+}
+.ws-kab[data-state="loading"] .ws-kab__surface > svg { visibility: hidden; }
+.ws-kab[data-state="loading"] .ws-kab__label {
+  color: transparent;
+  background: var(--surface-medium-bg);
+  border-radius: 6px;
+  height: 12px;
+  width: 60%;
+  margin: 5px 0;
+}
+
+@keyframes ws-kab-shimmer {
+  0%   { background-position: -120% 0, 0 0; }
+  100% { background-position: 220% 0, 0 0; }
+}
+

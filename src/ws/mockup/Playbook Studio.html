@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1" />
+  <title>Playbook Studio — Wealthsimple DS v2</title>
+  <link rel="stylesheet" href="colors_and_type.css" />
+  <link rel="stylesheet" href="studio.css" />
+</head>
+<body data-theme="light">
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="data.js"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="library.jsx"></script>
+  <script type="text/babel" src="runner.jsx"></script>
+  <script type="text/babel" src="builder.jsx"></script>
+
+  <script type="text/babel">
+    /* global React, ReactDOM, window, Icon */
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "theme": "light",
+      "density": "compact",
+      "domainColor": true,
+      "accent": "default"
+    }/*EDITMODE-END*/;
+
+    const NAV_ITEMS = [
+      { id: "library",   label: "Playbooks", icon: "Library", count: 24 },
+      { id: "runner",    label: "Run",       icon: "Play",    badge: "active" },
+      { id: "builder",   label: "Builder",   icon: "Branch" },
+      { id: "analytics", label: "Analytics", icon: "Chart" },
+      { id: "collections", label: "Collections", icon: "Folder" },
+    ];
+
+    const SAMPLE_PB = window.PLAYBOOKS[0]; // Trade-confirm — used by Runner + Builder demos
+
+    function App() {
+      const [tweaks, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+
+      const [route, setRoute] = React.useState("library");
+      window.__nav = setRoute;
+
+      // Apply theme + density to body
+      React.useEffect(() => {
+        document.body.dataset.theme = tweaks.theme;
+        document.body.dataset.density = tweaks.density;
+      }, [tweaks.theme, tweaks.density]);
+
+      // Apply accent override
+      React.useEffect(() => {
+        const map = {
+          default: null,
+          sky:     "var(--dv-categorical-01)",
+          celery:  "var(--positive-fg-strong)",
+          lilac:   "var(--dv-categorical-02)",
+        };
+        const v = map[tweaks.accent];
+        if (v) {
+          document.body.style.setProperty("--strong-bg", v);
+          document.body.style.setProperty("--strong-fg-inverted", "#fff");
+        } else {
+          document.body.style.removeProperty("--strong-bg");
+          document.body.style.removeProperty("--strong-fg-inverted");
+        }
+      }, [tweaks.accent]);
+
+      const dark = tweaks.theme === "dark";
+
+      return (
+        <div className="app" data-density={tweaks.density}>
+          <Nav route={route} setRoute={setRoute} />
+          <main style={{ minWidth: 0 }}>
+            <Topbar route={route} setRoute={setRoute} tweaks={tweaks} setTweak={setTweak} />
+            {route === "library" ? <window.Library dark={dark} /> : null}
+            {route === "runner" ? <window.Runner playbook={SAMPLE_PB} dark={dark} /> : null}
+            {route === "builder" ? <window.Builder playbook={SAMPLE_PB} dark={dark} /> : null}
+            {route === "analytics" ? <Placeholder title="Analytics" body="Run volume, success rate, drop-off heatmaps per playbook." /> : null}
+            {route === "collections" ? <Placeholder title="Collections" body="Group playbooks into themed packs (e.g. Tax season 2026)." /> : null}
+          </main>
+
+          <TweaksUI tweaks={tweaks} setTweak={setTweak} />
+        </div>
+      );
+    }
+
+    function Nav({ route, setRoute }) {
+      return (
+        <nav className="nav" data-screen-label="App nav">
+          <div className="nav__brand">
+            <div className="nav__brand-mark">P</div>
+            <div>
+              <div className="nav__brand-name">Playbook Studio</div>
+              <div className="nav__brand-sub">Wealthsimple · Support</div>
+            </div>
+          </div>
+
+          <div className="nav__section">Workspace</div>
+          {NAV_ITEMS.map((n) => {
+            const I = Icon[n.icon];
+            return (
+              <button
+                key={n.id}
+                className="nav__item"
+                data-active={route === n.id}
+                onClick={() => setRoute(n.id)}
+              >
+                <span className="nav__item-ico"><I size={16} /></span>
+                <span>{n.label}</span>
+                {n.count != null ? <span className="nav__count">{n.count}</span> : null}
+                {n.badge ? <span className="nav__count" style={{ background: "var(--positive-bg-soft)", color: "var(--positive-fg-strong)" }}>1</span> : null}
+              </button>
+            );
+          })}
+
+          <div className="nav__section">Personal</div>
+          <button className="nav__item"><span className="nav__item-ico"><Icon.Bookmark size={16} /></span><span>Saved</span><span className="nav__count">6</span></button>
+          <button className="nav__item"><span className="nav__item-ico"><Icon.Clock size={16} /></span><span>Recents</span></button>
+          <button className="nav__item"><span className="nav__item-ico"><Icon.Settings size={16} /></span><span>Settings</span></button>
+
+          <div className="nav__viewer">
+            <span className="nav__viewer-avatar">JB</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="nav__viewer-name">Joshua Bochu</div>
+              <div className="nav__viewer-role">Senior support specialist</div>
+            </div>
+            <Icon.More size={14} />
+          </div>
+        </nav>
+      );
+    }
+
+    function Topbar({ route, setRoute, tweaks, setTweak }) {
+      const titles = {
+        library:    "Playbooks",
+        runner:     "Run in progress",
+        builder:    "Builder",
+        analytics:  "Analytics",
+        collections:"Collections",
+      };
+      return (
+        <header className="topbar">
+          <div style={{ fontSize: 13, color: "var(--soft-fg)" }}>
+            Workspace <span style={{ margin: "0 8px", opacity: 0.5 }}>/</span>
+            <span style={{ color: "var(--strong-fg)", fontWeight: 500 }}>{titles[route]}</span>
+          </div>
+
+          <div className="topbar__search" style={{ marginLeft: "auto" }}>
+            <Icon.Search size={14} />
+            <input placeholder="Search playbooks, steps, outcomes…" />
+            <kbd>⌘K</kbd>
+          </div>
+
+          <div className="topbar__theme">
+            <button data-active={tweaks.theme === "light"} onClick={() => setTweak({ theme: "light" })} title="Light">
+              <Icon.Sun size={14} />
+            </button>
+            <button data-active={tweaks.theme === "dark"} onClick={() => setTweak({ theme: "dark" })} title="Dark">
+              <Icon.Moon size={14} />
+            </button>
+          </div>
+
+          <button className="btn btn--ghost btn--sm"><Icon.Bell size={14} /></button>
+        </header>
+      );
+    }
+
+    function Placeholder({ title, body }) {
+      return (
+        <div className="page">
+          <h1 className="page__title">{title}</h1>
+          <p className="page__subtitle">{body}</p>
+          <div style={{
+            marginTop: 24, padding: 48, borderRadius: 20,
+            border: "1px dashed var(--outline)", textAlign: "center",
+            color: "var(--soft-fg)",
+          }}>
+            This screen isn't part of this round — open <strong>Playbooks</strong>, <strong>Run</strong>, or <strong>Builder</strong> from the nav.
+          </div>
+        </div>
+      );
+    }
+
+    function TweaksUI({ tweaks, setTweak }) {
+      const { TweaksPanel, TweakSection, TweakRadio, TweakSelect, TweakToggle } = window;
+      if (!TweaksPanel) return null;
+      return (
+        <TweaksPanel title="Tweaks">
+          <TweakSection label="Appearance">
+            <TweakRadio
+              label="Theme"
+              value={tweaks.theme}
+              onChange={(v) => setTweak("theme", v)}
+              options={["light", "dark"]}
+            />
+            <TweakRadio
+              label="Density"
+              value={tweaks.density}
+              onChange={(v) => setTweak("density", v)}
+              options={["comfortable", "compact"]}
+            />
+          </TweakSection>
+          <TweakSection label="Color">
+            <TweakSelect
+              label="Primary accent"
+              value={tweaks.accent}
+              onChange={(v) => setTweak("accent", v)}
+              options={["default", "sky", "celery", "lilac"]}
+            />
+            <TweakToggle
+              label="Domain color marks"
+              value={tweaks.domainColor}
+              onChange={(v) => setTweak("domainColor", v)}
+            />
+          </TweakSection>
+        </TweaksPanel>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
