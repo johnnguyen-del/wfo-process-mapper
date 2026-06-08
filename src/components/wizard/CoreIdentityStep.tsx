@@ -1,0 +1,76 @@
+import type { ProcessEntry, Domain, TeamOwner } from '@/lib/types'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import FieldGroup from './FieldGroup'
+import MultiToggle from './MultiToggle'
+
+const DOMAINS: Domain[] = ['Banking', 'Transfers', 'Invest', 'Security & Risk']
+const TEAM_OWNERS: TeamOwner[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk']
+
+interface CoreIdentityStepProps {
+  entry: ProcessEntry
+  onChange: (patch: Partial<ProcessEntry>) => void
+}
+
+export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepProps) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold">Core Identity</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Name and describe this process so someone outside your pod understands it.
+        </p>
+      </div>
+
+      <FieldGroup
+        label="Process Name"
+        hint="Use a clear, specific name — e.g. Metal Card Reissuance — Client Request, not Metal Card thing"
+        required
+      >
+        <Input
+          value={entry.processName}
+          onChange={(e) => onChange({ processName: e.target.value })}
+          placeholder="e.g. Wire Transfer Trace Request"
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        label="Domain"
+        hint="The pod that owns this process — accountability, not who touches it"
+        required
+      >
+        <MultiToggle<Domain>
+          options={DOMAINS}
+          value={entry.domain ? [entry.domain] : []}
+          onChange={(v) => onChange({ domain: v[0] ?? '' })}
+          single
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        label="Description"
+        hint="1–3 sentences: what triggers it, what action is taken, how it resolves. Not step-by-step."
+        required
+      >
+        <Textarea
+          value={entry.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="e.g. Triggered when a client reports a wire transfer not received. Agent looks up the wire in OAS, confirms status, and escalates to Ops via BOPSIT JIRA if the wire shows as sent."
+          rows={4}
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        label="Team Owner"
+        hint="All teams that actively handle this workflow — select all that apply"
+        required
+      >
+        <MultiToggle<TeamOwner>
+          options={TEAM_OWNERS}
+          value={entry.teamOwner}
+          onChange={(v) => onChange({ teamOwner: v })}
+        />
+      </FieldGroup>
+    </div>
+  )
+}
