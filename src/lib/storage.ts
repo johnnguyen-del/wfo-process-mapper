@@ -1,36 +1,52 @@
 import type { ProcessEntry } from './types'
 
-const PREFIX = 'wfo-process:'
+const PREFIX = 'processes/'
 
-function getStorage(): Storage {
-  return window.localStorage
+// localStorage fallback for local dev (same pattern as PlaybookStudio)
+function makeLocalScope() {
+  const ns = (key: string) => `wfo-process-mapper:${key}`
+  return {
+    async get<T>(key: string): Promise<T | null> {
+      const raw = window.localStorage.getItem(ns(key))
+      if (raw === null) return null
+      try { return JSON.parse(raw) as T } catch { return null }
+    },
+    async put<T>(key: string, value: T): Promise<void> {
+      window.localStorage.setItem(ns(key), JSON.stringify(value))
+    },
+    async delete(key: string): Promise<void> {
+      window.localStorage.removeItem(ns(key))
+    },
+    async list(prefix = ''): Promise<string[]> {
+      const fullPrefix = `wfo-process-mapper:${prefix}`
+      const keys: string[] = []
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i)
+        if (key && key.startsWith(fullPrefix)) {
+          keys.push(key.slice('wfo-process-mapper:'.length))
+        }
+      }
+      return keys
+    },
+  }
+}
+
+const localScope = makeLocalScope()
+
+function scope() {
+  if (typeof MagicStorage !== 'undefined' && MagicStorage?.public) {
+    return MagicStorage.public
+  }
+  return localScope
 }
 
 export function saveEntry(entry: ProcessEntry): void {
-  try {
-    const store = (window as any).MagicStorage?.public ?? getStorage()
-    const key = `${PREFIX}${entry.id}`
-    const value = JSON.stringify(entry)
-    if (store?.setItem) {
-      store.setItem(key, value)
-    } else if (typeof store?.put === 'function') {
-      void store.put(key, value)
-    }
-  } catch {
-    getStorage().setItem(`${PREFIX}${entry.id}`, JSON.stringify(entry))
-  }
+  void scope().put(`${PREFIX}${entry.id}`, entry)
 }
 
 export async function loadEntry(id: string): Promise<ProcessEntry | null> {
   try {
-    const store = (window as any).MagicStorage?.public
-    const key = `${PREFIX}${id}`
-    if (store?.get) {
-      const raw = await store.get(key)
-      if (raw) return JSON.parse(raw) as ProcessEntry
-    }
-    const local = getStorage().getItem(key)
-    return local ? (JSON.parse(local) as ProcessEntry) : null
+    return await scope().get<ProcessEntry>(`${PREFIX}${id}`)
   } catch {
     return null
   }
@@ -38,22 +54,9 @@ export async function loadEntry(id: string): Promise<ProcessEntry | null> {
 
 export async function listEntries(): Promise<ProcessEntry[]> {
   try {
-    const store = (window as any).MagicStorage?.public
-    let raw: Record<string, string> = {}
-    if (store?.list) {
-      raw = await store.list(PREFIX)
-    } else {
-      for (let i = 0; i < getStorage().length; i++) {
-        const k = getStorage().key(i)!
-        if (k.startsWith(PREFIX)) {
-          raw[k] = getStorage().getItem(k)!
-        }
-      }
-    }
-    return Object.values(raw)
-      .map((v) => {
-        try { return JSON.parse(v) as ProcessEntry } catch { return null }
-      })
+    const keys = await scope().list(PREFIX)
+    const entries = await Promise.all(keys.map((k) => scope().get<ProcessEntry>(k)))
+    return entries
       .filter((e): e is ProcessEntry => e !== null)
       .sort((a, b) => (b.submittedAt || b.id).localeCompare(a.submittedAt || a.id))
   } catch {
