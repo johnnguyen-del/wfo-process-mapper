@@ -1,4 +1,5 @@
 import type { ProcessEntry } from './types'
+import { toYaml } from './export'
 
 const DATA_SOURCE_ID = 'ac032564-55fc-45e0-85fd-3e2a3e2d4c12'
 
@@ -18,7 +19,7 @@ export async function submitToNotion(
     throw new Error('MagicTools not available — is this running on Magic?')
   }
 
-  const properties: Record<string, string | null> = {
+  const properties: Record<string, string | number | null> = {
     'Process Name': entry.processName,
     'Domain': entry.domain || null,
     'Description': entry.description || null,
@@ -38,7 +39,7 @@ export async function submitToNotion(
     'Ops Domains': JSON.stringify(entry.opsDomains),
     'Other Metrics': entry.otherMetrics || null,
     'date:Last Reviewed:start': isoDate(entry.lastReviewed),
-    'date:Last Reviewed:is_datetime': '0',
+    'date:Last Reviewed:is_datetime': 0,
     'Doc Review': bool(entry.docReview),
     'Figma Map': toolUrl || null,
   }
@@ -64,7 +65,10 @@ export async function submitToNotion(
           type: 'data_source_id',
           data_source_id: DATA_SOURCE_ID,
         },
-        pages: [{ properties }],
+        pages: [{
+          properties,
+          content: `## Process YAML\n\nStored for Claude analysis across all domain pods.\n\n\`\`\`yaml\n${toYaml(entry)}\`\`\``,
+        }],
       },
       { raw: true }
     )
