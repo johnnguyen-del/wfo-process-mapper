@@ -9,6 +9,11 @@ interface MapQualityChecklistProps {
 }
 
 export default function MapQualityChecklist({ processMap, activeLanes }: MapQualityChecklistProps) {
+  // Hooks must be first — before any derived values or early returns
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
   const nodes = processMap.nodes
   const populatedLanes = new Set(nodes.map((n) => n.lane))
   const hasDecisions = nodes.some((n) => n.type === 'decision')
@@ -51,14 +56,11 @@ export default function MapQualityChecklist({ processMap, activeLanes }: MapQual
   const applicable = criteria.filter((c) => !c.na)
   const metCount = applicable.filter((c) => c.met).length
 
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-
   async function fetchSuggestions() {
+    // Strip characters that could confuse JSON parsing of the response
     const stepLabels = nodes
       .filter(n => n.type !== 'start' && n.type !== 'end')
-      .map(n => n.label)
+      .map(n => n.label.replace(/["\\[\]]/g, ' ').trim())
       .filter(Boolean)
 
     if (stepLabels.length === 0) {
