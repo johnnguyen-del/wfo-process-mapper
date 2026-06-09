@@ -50,6 +50,7 @@ export function toYaml(entry: ProcessEntry): string {
       name: entry.processName,
       domain: entry.domain,
       description: entry.description,
+      source_url: entry.sourceUrl || null,
       team_owner: entry.teamOwner,
       volume_tier: entry.volumeTier,
       user_tools: entry.userTools,
@@ -72,6 +73,7 @@ export function toYaml(entry: ProcessEntry): string {
         cx_ticket_driver: entry.cxTicketDriver || null,
         other_metrics: entry.otherMetrics || null,
       },
+      kb_links: entry.kbLinks?.length ? entry.kbLinks : null,
       meta: {
         last_reviewed: entry.lastReviewed,
         doc_review: entry.docReview,
@@ -83,6 +85,7 @@ export function toYaml(entry: ProcessEntry): string {
           id: n.id, type: n.type, label: n.label, lane: n.lane,
           ...(n.timeEstimate ? { time_estimate: n.timeEstimate } : {}),
           ...(n.badge ? { badge: n.badge } : {}),
+          ...(n.attachments?.length ? { attachments: n.attachments } : {}),
           position: n.position,
         })),
         edges: entry.processMap.edges.map(e => ({
@@ -114,6 +117,7 @@ export function fromYaml(
       lane: (n.lane ?? 'CS') as ProcessNode['lane'],
       timeEstimate: n.time_estimate ?? undefined,
       badge: n.badge ?? undefined,
+      attachments: n.attachments ?? undefined,
       position: { x: n.position?.x ?? 150 + i * 220, y: n.position?.y ?? 80 },
     }))
 
@@ -145,6 +149,8 @@ export function fromYaml(
       opsDomains: p.taxonomy?.ops_domains ?? [],
       cxTicketDriver: p.taxonomy?.cx_ticket_driver ?? '',
       otherMetrics: p.taxonomy?.other_metrics ?? '',
+      sourceUrl: p.source_url ?? '',
+      kbLinks: p.kb_links ?? [],
       processMap: { nodes, edges },
     }
   } catch {

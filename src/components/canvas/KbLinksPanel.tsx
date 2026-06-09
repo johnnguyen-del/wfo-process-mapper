@@ -31,6 +31,7 @@ export default function KbLinksPanel({ links, onChange, label = 'Knowledge Base 
 
   function handleAdd() {
     if (!form.url.trim()) return
+    if (!/^https?:\/\//i.test(form.url.trim())) return
     const newLink: KbLink = {
       id: crypto.randomUUID(),
       type: form.type,
@@ -61,7 +62,7 @@ export default function KbLinksPanel({ links, onChange, label = 'Knowledge Base 
 
       {links.map(link => (
         <div key={link.id} className="flex items-center gap-2 text-xs border rounded px-2 py-1.5">
-          <span className="shrink-0">{TYPE_ICONS[link.type]}</span>
+          <span className="shrink-0">{TYPE_ICONS[link.type] ?? '🔗'}</span>
           <span className="text-muted-foreground shrink-0">{TYPE_LABELS[link.type]}</span>
           <a
             href={link.url}
@@ -115,7 +116,7 @@ export default function KbLinksPanel({ links, onChange, label = 'Knowledge Base 
             </button>
             <button
               type="button"
-              onClick={() => setAdding(false)}
+              onClick={() => { setAdding(false); setForm({ type: 'notion', url: '', title: '' }) }}
               className="flex-1 border rounded py-1 text-xs"
             >
               Cancel
