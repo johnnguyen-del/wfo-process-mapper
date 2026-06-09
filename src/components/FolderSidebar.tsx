@@ -96,7 +96,7 @@ export default function FolderSidebar({
   }
 
   function countForFolder(folderId: string) {
-    return entries.filter(e => e.folderId === folderId).length
+    return entries.filter(e => e.folderId === folderId && !e.deletedAt).length
   }
 
   const isProcessDragOver = (id: string | null) =>
