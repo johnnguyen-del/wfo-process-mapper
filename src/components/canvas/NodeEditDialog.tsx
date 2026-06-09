@@ -132,7 +132,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes ? Number(durationMinutes) : undefined)} className="flex-1">
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined)} className="flex-1">
           Save
         </Button>
       </div>
