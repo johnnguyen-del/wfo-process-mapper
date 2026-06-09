@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sparkles, FormInput, CheckCircle, ExternalLink } from 'lucide-react'
@@ -34,12 +34,14 @@ export default function ProcessBuilder() {
   const [layoutKey, setLayoutKey] = useState(0)
   const [viewMode, setViewMode] = useState<ViewMode>('current')
 
-  const DEFAULT_LEFT_WIDTH = Math.max(280, Math.round(window.innerWidth * 0.4))
+  // Capture once at mount — stable across re-renders
+  const defaultLeftWidth = useRef(Math.max(280, Math.round(window.innerWidth * 0.4))).current
 
   const [leftWidth, setLeftWidth] = useState<number>(() => {
     const saved = localStorage.getItem('wfo-layout-left')
-    return saved ? Number(saved) : DEFAULT_LEFT_WIDTH
+    return saved ? Number(saved) : defaultLeftWidth
   })
+  const leftDragCleanupRef = useRef<(() => void) | null>(null)
   const [folders, setFolders] = useState<FolderEntry[]>([])
 
   useEffect(() => {
@@ -51,6 +53,12 @@ export default function ProcessBuilder() {
   }, [id])
 
   useEffect(() => { loadFolders().then(setFolders) }, [])
+
+  useEffect(() => {
+    return () => {
+      leftDragCleanupRef.current?.()
+    }
+  }, [])
 
   function patch(update: Partial<ProcessEntry>) {
     setEntry((prev) => {
@@ -127,6 +135,7 @@ export default function ProcessBuilder() {
 
   function handleLeftDragStart(e: React.MouseEvent) {
     e.preventDefault()
+    document.body.style.cursor = 'col-resize'
     const startX = e.clientX
     const startWidth = leftWidth
 
@@ -139,16 +148,23 @@ export default function ProcessBuilder() {
     }
 
     function onUp() {
+      document.body.style.cursor = ''
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       setLeftWidth(prev => {
         localStorage.setItem('wfo-layout-left', String(prev))
         return prev
       })
+      leftDragCleanupRef.current = null
     }
 
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
+    leftDragCleanupRef.current = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+    }
   }
 
   function renderStep() {
