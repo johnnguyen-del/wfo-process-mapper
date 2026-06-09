@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea'
 import FieldGroup from './FieldGroup'
 import MultiToggle from './MultiToggle'
 
-const DOMAINS: Domain[] = ['Banking', 'Transfers', 'Invest', 'Security & Risk']
+const DOMAINS: Domain[] = ['Banking', 'Transfers', 'Invest', 'Security & Risk', 'PRR']
 const TEAM_OWNERS: TeamOwner[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk']
 
 interface CoreIdentityStepProps {

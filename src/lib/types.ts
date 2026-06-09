@@ -1,4 +1,4 @@
-export type Domain = 'Banking' | 'Transfers' | 'Invest' | 'Security & Risk'
+export type Domain = 'Banking' | 'Transfers' | 'Invest' | 'Security & Risk' | 'PRR'
 export type TeamOwner = 'CS' | 'Ops' | 'Fraud Ops' | 'L2 - Risk'
 export type VolumeTier = 'High' | 'Medium' | 'Low'
 export type UserTool = 'Atlas' | 'Persona' | 'OAS' | 'JIRA' | 'Google Sheets' | 'DOCX'

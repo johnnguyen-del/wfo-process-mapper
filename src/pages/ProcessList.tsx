@@ -109,7 +109,7 @@ export default function ProcessList() {
       )
     : folderFiltered
 
-  const domains = ['Banking', 'Transfers', 'Invest', 'Security & Risk'] as Domain[]
+  const domains = ['Banking', 'Transfers', 'Invest', 'Security & Risk', 'PRR'] as Domain[]
   const grouped = Object.fromEntries(
     domains.map((d) => [d, visibleEntries.filter((e) => e.domain === d)])
   )
