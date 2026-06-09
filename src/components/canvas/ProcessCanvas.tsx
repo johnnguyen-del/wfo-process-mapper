@@ -12,6 +12,7 @@ import {
   useReactFlow,
   useViewport,
   MarkerType,
+  Position,
   type Node,
   type Edge,
   type Connection,
@@ -65,11 +66,15 @@ const ALL_LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automatio
 
 const EDGE_MARKER = { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 }
 
-function toRfNodes(nodes: ProcessNode[]): Node[] {
+function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Node[] {
+  const sourcePos = direction === 'TB' ? Position.Bottom : Position.Right
+  const targetPos = direction === 'TB' ? Position.Top : Position.Left
   return nodes.map((n) => ({
     id: n.id,
     type: n.type,
     position: n.position,
+    sourcePosition: sourcePos,
+    targetPosition: targetPos,
     data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type, badge: n.badge, durationMinutes: n.durationMinutes, attachments: n.attachments },
   }))
 }
@@ -211,7 +216,7 @@ interface CanvasInnerProps {
 
 function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes))
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
   const [draggingType, setDraggingType] = useState<{ type: ProcessNodeType; lane: SwimLane } | null>(null)
   const [editingNode, setEditingNode] = useState<Node | null>(null)
