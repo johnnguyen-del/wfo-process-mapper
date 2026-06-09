@@ -12,6 +12,7 @@ import CommsStep from '@/components/wizard/CommsStep'
 import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
+import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
 import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode } from '@/lib/types'
 import { generateId, loadEntry, saveEntry } from '@/lib/storage'
@@ -304,9 +305,15 @@ export default function ProcessBuilder() {
               </>
             )}
             {viewMode === 'compare' && (
-              <div className="flex-1 flex items-center justify-center h-full text-sm text-muted-foreground">
-                Compare view — coming in Task 3.3
-              </div>
+              <CompareView
+                currentMap={entry.processMap}
+                optimizationMap={entry.optimizationMap ?? { nodes: [], edges: [] }}
+                direction={canvasDirection}
+                lineStyle={lineStyle}
+                teamOwner={entry.teamOwner}
+                workato={entry.workato}
+                decagonL0={entry.decagonL0}
+              />
             )}
           </div>
         </div>
