@@ -16,6 +16,11 @@ export interface ProcessNode {
   lane: SwimLane
   timeEstimate?: string
   position: { x: number; y: number }
+  badge?: {
+    status?: 'active' | 'review' | 'deprecated'
+    priority?: 'high' | 'medium' | 'low'
+    ownerNote?: string
+  }
 }
 
 export interface ProcessEdge {
@@ -24,6 +29,9 @@ export interface ProcessEdge {
   target: string
   label?: string
 }
+
+export type CanvasDirection = 'LR' | 'TB'
+export type LineStyle = 'default' | 'step'
 
 export interface ProcessMap {
   nodes: ProcessNode[]

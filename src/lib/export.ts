@@ -1,6 +1,6 @@
 import { stringify, parse } from 'yaml'
 import dagre from 'dagre'
-import type { ProcessEntry, ProcessNode, ProcessEdge } from './types'
+import type { CanvasDirection, ProcessEntry, ProcessNode, ProcessEdge } from './types'
 
 const NODE_W = 200
 const NODE_H = 60
@@ -12,7 +12,11 @@ export const LANE_Y: Record<string, number> = {
   CS: 80, Ops: 280, 'Fraud Ops': 480, 'L2 - Risk': 680, Automation: 880, Client: 1080,
 }
 
-function autoLayout(nodes: ProcessNode[], edges: ProcessEdge[]): ProcessNode[] {
+export function autoLayout(
+  nodes: ProcessNode[],
+  edges: ProcessEdge[],
+  direction: CanvasDirection = 'LR'
+): ProcessNode[] {
   if (nodes.length === 0) return nodes
 
   const normalised = nodes.map(n => ({
@@ -22,7 +26,7 @@ function autoLayout(nodes: ProcessNode[], edges: ProcessEdge[]): ProcessNode[] {
 
   // Full dagre layout — no lane y constraint, nodes go where the graph topology puts them
   const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'LR', nodesep: NODE_SEP, ranksep: RANK_SEP, marginx: 60, marginy: 40 })
+  g.setGraph({ rankdir: direction, nodesep: NODE_SEP, ranksep: RANK_SEP, marginx: 60, marginy: 40 })
   g.setDefaultEdgeLabel(() => ({}))
   normalised.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }))
   edges.forEach(e => { if (g.hasNode(e.source) && g.hasNode(e.target)) g.setEdge(e.source, e.target) })
@@ -90,7 +94,10 @@ export function toYaml(entry: ProcessEntry): string {
   return stringify(doc)
 }
 
-export function fromYaml(rawYaml: string): Partial<ProcessEntry> | null {
+export function fromYaml(
+  rawYaml: string,
+  direction: CanvasDirection = 'LR'
+): Partial<ProcessEntry> | null {
   try {
     const doc = parse(rawYaml) as any
     const p =
@@ -114,7 +121,7 @@ export function fromYaml(rawYaml: string): Partial<ProcessEntry> | null {
       label: e.label ?? undefined,
     }))
 
-    const nodes = autoLayout(rawNodes, edges)
+    const nodes = autoLayout(rawNodes, edges, direction)
 
     return {
       processName: p.name ?? '',
