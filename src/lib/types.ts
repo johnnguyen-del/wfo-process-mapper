@@ -16,6 +16,13 @@ export interface KbLink {
   title?: string
 }
 
+export interface EditLogEntry {
+  by: string           // editor email
+  at: string           // ISO timestamp
+  action: 'saved' | 'submitted'
+  changed?: string[]   // friendly field names e.g. ['Process Name', 'Domain']
+}
+
 export interface FolderEntry {
   id: string
   name: string
@@ -105,6 +112,9 @@ export interface ProcessEntry {
   submittedBy: string
   submittedAt: string
   notionPageUrl: string | null
+  author?: string            // email — set on first save, never overwritten
+  collaborators?: string[]   // all editors deduped
+  editLog?: EditLogEntry[]   // newest first
   status: 'draft' | 'submitted'
 }
 
@@ -140,6 +150,9 @@ export function emptyEntry(id: string): ProcessEntry {
     submittedBy: '',
     submittedAt: '',
     notionPageUrl: null,
+    author: undefined,
+    collaborators: undefined,
+    editLog: undefined,
     status: 'draft',
   }
 }
