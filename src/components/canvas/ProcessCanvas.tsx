@@ -233,9 +233,10 @@ interface CanvasInnerProps {
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
+  onRegisterGetter?: (getter: () => ProcessMap) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange, onRegisterGetter }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -250,11 +251,21 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
   // Refs always hold the latest rendered state — used to read fresh values
-  // inside setTimeout callbacks where the closure would otherwise be stale.
+  // inside event callbacks where the closure would otherwise be stale.
   const rfNodesRef = useRef(rfNodes)
   rfNodesRef.current = rfNodes
   const rfEdgesRef = useRef(rfEdges)
   rfEdgesRef.current = rfEdges
+
+  // Register a getter so ProcessBuilder can read live canvas state at save time.
+  // The getter always reads from rfNodesRef/rfEdgesRef (updated each render),
+  // so it returns fresh positions regardless of when it's called.
+  useEffect(() => {
+    onRegisterGetter?.(() => ({
+      nodes: fromRfNodes(rfNodesRef.current),
+      edges: fromRfEdges(rfEdgesRef.current),
+    }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFullscreen() {
     const el = canvasContainerRef.current?.closest('.canvas-fullscreen-target') as HTMLElement | null
@@ -626,9 +637,12 @@ interface ProcessCanvasProps {
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
   layoutKey?: number
+  // Registers a getter that ProcessBuilder can call at save time to read
+  // the current canvas state directly from rfNodes, bypassing entry.processMap
+  onRegisterGetter?: (getter: () => ProcessMap) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter }: ProcessCanvasProps) {
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -661,6 +675,7 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
+        onRegisterGetter={onRegisterGetter}
       />
     </ReactFlowProvider>
   )
