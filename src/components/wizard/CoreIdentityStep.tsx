@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea'
 import FieldGroup from './FieldGroup'
 import MultiToggle from './MultiToggle'
 
-const DOMAINS: Domain[] = ['Banking', 'Transfers', 'Invest', 'Security & Risk']
+const DOMAINS: Domain[] = ['Banking', 'Transfers', 'Invest', 'Security & Risk', 'PRR']
 const TEAM_OWNERS: TeamOwner[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk']
 
 interface CoreIdentityStepProps {
@@ -44,6 +44,7 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
           value={entry.domain ? [entry.domain] : []}
           onChange={(v) => onChange({ domain: v[0] ?? '' })}
           single
+          customizable
         />
       </FieldGroup>
 
@@ -61,6 +62,19 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
       </FieldGroup>
 
       <FieldGroup
+        label="Source Link (Blowout Link)"
+        hint="URL to the original process documentation — Guru card, Notion page, or GDoc"
+      >
+        <input
+          type="url"
+          value={entry.sourceUrl ?? ''}
+          onChange={e => onChange({ sourceUrl: e.target.value || undefined })}
+          placeholder="https://... (original process documentation)"
+          className="w-full border rounded px-3 py-2 text-sm"
+        />
+      </FieldGroup>
+
+      <FieldGroup
         label="Team Owner"
         hint="All teams that actively handle this workflow — select all that apply"
         required
@@ -69,6 +83,7 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
           options={TEAM_OWNERS}
           value={entry.teamOwner}
           onChange={(v) => onChange({ teamOwner: v })}
+          customizable
         />
       </FieldGroup>
     </div>

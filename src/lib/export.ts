@@ -1,6 +1,6 @@
 import { stringify, parse } from 'yaml'
 import dagre from 'dagre'
-import type { ProcessEntry, ProcessNode, ProcessEdge } from './types'
+import type { CanvasDirection, ProcessEntry, ProcessNode, ProcessEdge } from './types'
 
 const NODE_W = 200
 const NODE_H = 60
@@ -12,7 +12,11 @@ export const LANE_Y: Record<string, number> = {
   CS: 80, Ops: 280, 'Fraud Ops': 480, 'L2 - Risk': 680, Automation: 880, Client: 1080,
 }
 
-function autoLayout(nodes: ProcessNode[], edges: ProcessEdge[]): ProcessNode[] {
+export function autoLayout(
+  nodes: ProcessNode[],
+  edges: ProcessEdge[],
+  direction: CanvasDirection = 'LR'
+): ProcessNode[] {
   if (nodes.length === 0) return nodes
 
   const normalised = nodes.map(n => ({
@@ -22,7 +26,7 @@ function autoLayout(nodes: ProcessNode[], edges: ProcessEdge[]): ProcessNode[] {
 
   // Full dagre layout — no lane y constraint, nodes go where the graph topology puts them
   const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'LR', nodesep: NODE_SEP, ranksep: RANK_SEP, marginx: 60, marginy: 40 })
+  g.setGraph({ rankdir: direction, nodesep: NODE_SEP, ranksep: RANK_SEP, marginx: 60, marginy: 40 })
   g.setDefaultEdgeLabel(() => ({}))
   normalised.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }))
   edges.forEach(e => { if (g.hasNode(e.source) && g.hasNode(e.target)) g.setEdge(e.source, e.target) })
@@ -46,6 +50,7 @@ export function toYaml(entry: ProcessEntry): string {
       name: entry.processName,
       domain: entry.domain,
       description: entry.description,
+      source_url: entry.sourceUrl || null,
       team_owner: entry.teamOwner,
       volume_tier: entry.volumeTier,
       user_tools: entry.userTools,
@@ -68,6 +73,7 @@ export function toYaml(entry: ProcessEntry): string {
         cx_ticket_driver: entry.cxTicketDriver || null,
         other_metrics: entry.otherMetrics || null,
       },
+      kb_links: entry.kbLinks?.length ? entry.kbLinks : null,
       meta: {
         last_reviewed: entry.lastReviewed,
         doc_review: entry.docReview,
@@ -78,6 +84,11 @@ export function toYaml(entry: ProcessEntry): string {
         nodes: entry.processMap.nodes.map(n => ({
           id: n.id, type: n.type, label: n.label, lane: n.lane,
           ...(n.timeEstimate ? { time_estimate: n.timeEstimate } : {}),
+          ...(n.badge ? { badge: n.badge } : {}),
+          ...(n.attachments?.length ? { attachments: n.attachments } : {}),
+          ...(n.nodeColor ? { node_color: n.nodeColor } : {}),
+          ...(n.nodeWidth != null ? { node_width: n.nodeWidth } : {}),
+          ...(n.nodeHeight != null ? { node_height: n.nodeHeight } : {}),
           position: n.position,
         })),
         edges: entry.processMap.edges.map(e => ({
@@ -90,7 +101,10 @@ export function toYaml(entry: ProcessEntry): string {
   return stringify(doc)
 }
 
-export function fromYaml(rawYaml: string): Partial<ProcessEntry> | null {
+export function fromYaml(
+  rawYaml: string,
+  direction: CanvasDirection = 'LR'
+): Partial<ProcessEntry> | null {
   try {
     const doc = parse(rawYaml) as any
     const p =
@@ -105,6 +119,11 @@ export function fromYaml(rawYaml: string): Partial<ProcessEntry> | null {
       label: n.label ?? '',
       lane: (n.lane ?? 'CS') as ProcessNode['lane'],
       timeEstimate: n.time_estimate ?? undefined,
+      badge: n.badge ?? undefined,
+      attachments: n.attachments ?? undefined,
+      nodeColor: n.node_color ?? undefined,
+      nodeWidth: n.node_width ?? undefined,
+      nodeHeight: n.node_height ?? undefined,
       position: { x: n.position?.x ?? 150 + i * 220, y: n.position?.y ?? 80 },
     }))
 
@@ -114,7 +133,7 @@ export function fromYaml(rawYaml: string): Partial<ProcessEntry> | null {
       label: e.label ?? undefined,
     }))
 
-    const nodes = autoLayout(rawNodes, edges)
+    const nodes = autoLayout(rawNodes, edges, direction)
 
     return {
       processName: p.name ?? '',
@@ -136,6 +155,8 @@ export function fromYaml(rawYaml: string): Partial<ProcessEntry> | null {
       opsDomains: p.taxonomy?.ops_domains ?? [],
       cxTicketDriver: p.taxonomy?.cx_ticket_driver ?? '',
       otherMetrics: p.taxonomy?.other_metrics ?? '',
+      sourceUrl: p.source_url ?? '',
+      kbLinks: p.kb_links ?? [],
       processMap: { nodes, edges },
     }
   } catch {

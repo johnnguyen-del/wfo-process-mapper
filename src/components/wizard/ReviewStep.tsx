@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button'
 import { AlertCircle, AlertTriangle, CheckCircle, Download, ChevronDown, ChevronRight, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import KbLinksPanel from '@/components/canvas/KbLinksPanel'
 
 interface ReviewStepProps {
   entry: ProcessEntry
+  onChange: (patch: Partial<ProcessEntry>) => void
   onSubmit: () => void
   submitting: boolean
 }
 
-export default function ReviewStep({ entry, onSubmit, submitting }: ReviewStepProps) {
+export default function ReviewStep({ entry, onChange, onSubmit, submitting }: ReviewStepProps) {
   const [yamlOpen, setYamlOpen] = useState(false)
   const errors = validateEntry(entry)
   const criticalErrors = errors.filter((e) => e.critical)
@@ -79,6 +81,15 @@ export default function ReviewStep({ entry, onSubmit, submitting }: ReviewStepPr
         <Row label="L0 Containable" value={entry.l0Containable ? 'Yes' : 'No'} />
         <Row label="Workato" value={entry.workato ? 'Yes' : 'No'} />
         <Row label="Map nodes" value={String(entry.processMap.nodes.length)} />
+      </div>
+
+      {/* Process-level KB links */}
+      <div className="border rounded-lg p-3">
+        <KbLinksPanel
+          links={entry.kbLinks ?? []}
+          onChange={links => onChange({ kbLinks: links })}
+          label="Process Documentation Links"
+        />
       </div>
 
       {/* YAML preview — collapsible */}

@@ -61,6 +61,7 @@ export default function VolumeToolingStep({ entry, onChange }: VolumeToolingStep
           options={USER_TOOLS}
           value={entry.userTools}
           onChange={(v) => onChange({ userTools: v })}
+          customizable
         />
       </FieldGroup>
 
@@ -72,6 +73,7 @@ export default function VolumeToolingStep({ entry, onChange }: VolumeToolingStep
           options={JIRA_BOARDS}
           value={entry.jiraBoards}
           onChange={(v) => onChange({ jiraBoards: v })}
+          customizable
         />
       </FieldGroup>
     </div>

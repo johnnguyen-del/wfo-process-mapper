@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock } from 'lucide-react'
+import { ArrowDown, ArrowRight, BarChart2, Clock, GitBranch, GitMerge, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -12,6 +12,7 @@ import {
   useReactFlow,
   useViewport,
   MarkerType,
+  Position,
   type Node,
   type Edge,
   type Connection,
@@ -19,15 +20,19 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import type { ProcessMap, ProcessNode, ProcessEdge, ProcessNodeType, SwimLane, TeamOwner } from '@/lib/types'
+import type { KbLink, ProcessMap, ProcessNode, ProcessEdge, ProcessNodeType, SwimLane, TeamOwner, CanvasDirection, LineStyle } from '@/lib/types'
 import StepNode from './node-types/StepNode'
 import DecisionNode from './node-types/DecisionNode'
 import AutomationNode from './node-types/AutomationNode'
 import CommsNode from './node-types/CommsNode'
 import StartEndNode from './node-types/StartEndNode'
+import SwimlaneNode from './node-types/SwimlaneNode'
+import StickyNode from './node-types/StickyNode'
 import NodePalette from './NodePalette'
 import MapQualityChecklist from './MapQualityChecklist'
 import NodeEditDialog from './NodeEditDialog'
+import MetricsDashboard from './MetricsDashboard'
+import OutcomePanel from './OutcomePanel'
 
 const NODE_TYPES = {
   step: StepNode,
@@ -36,6 +41,8 @@ const NODE_TYPES = {
   comms: CommsNode,
   start: StartEndNode,
   end: StartEndNode,
+  swimlane: SwimlaneNode,
+  sticky: StickyNode,
 }
 
 export const LANE_HEIGHT = 200
@@ -60,12 +67,31 @@ export const LANE_LABEL_COLORS: Record<SwimLane, string> = {
 
 const ALL_LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
 
-function toRfNodes(nodes: ProcessNode[]): Node[] {
+const EDGE_MARKER = { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 }
+
+function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Node[] {
+  const sourcePos = direction === 'TB' ? Position.Bottom : Position.Right
+  const targetPos = direction === 'TB' ? Position.Top : Position.Left
   return nodes.map((n) => ({
     id: n.id,
     type: n.type,
     position: n.position,
-    data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type },
+    sourcePosition: sourcePos,
+    targetPosition: targetPos,
+    zIndex: n.type === 'sticky' ? 10 : n.type === 'swimlane' ? -1 : 0,
+    style: n.type === 'swimlane'
+      ? { width: n.nodeWidth ?? 400, height: n.nodeHeight ?? 200 }
+      : undefined,
+    data: {
+      label: n.label,
+      lane: n.lane,
+      timeEstimate: n.timeEstimate,
+      type: n.type,
+      badge: n.badge,
+      durationMinutes: n.durationMinutes,
+      attachments: n.attachments,
+      nodeColor: n.nodeColor,
+    },
   }))
 }
 
@@ -77,7 +103,7 @@ function edgeColor(label?: string): string {
   return '#f59e0b' // amber for other conditions
 }
 
-function toRfEdges(edges: ProcessEdge[]): Edge[] {
+function toRfEdges(edges: ProcessEdge[], lineStyle: LineStyle = 'default'): Edge[] {
   return edges.map((e) => {
     const color = edgeColor(e.label)
     return ({
@@ -85,7 +111,7 @@ function toRfEdges(edges: ProcessEdge[]): Edge[] {
     source: e.source,
     target: e.target,
     label: e.label || undefined,
-    type: 'default',
+    type: lineStyle,
     style: { strokeWidth: e.label ? 2 : 1.5, stroke: color },
     markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
     labelStyle: { fontSize: 10, fontWeight: 700, fill: color },
@@ -104,6 +130,12 @@ function fromRfNodes(rfNodes: Node[]): ProcessNode[] {
       label: (n.data as any).label,
       lane: (n.data as any).lane as SwimLane,
       timeEstimate: (n.data as any).timeEstimate,
+      badge: (n.data as any).badge,
+      durationMinutes: (n.data as any).durationMinutes,
+      attachments: (n.data as any).attachments,
+      nodeColor: (n.data as any).nodeColor,
+      nodeWidth: n.type === 'swimlane' && n.measured?.width ? Math.round(n.measured.width) : undefined,
+      nodeHeight: n.type === 'swimlane' && n.measured?.height ? Math.round(n.measured.height) : undefined,
       position: n.position,
     }))
 }
@@ -192,17 +224,45 @@ function SwimlaneOverlay({ lanes, populatedLanes }: { lanes: SwimLane[]; populat
 interface CanvasInnerProps {
   processMap: ProcessMap
   lanes: SwimLane[]
+  direction: CanvasDirection
+  lineStyle: LineStyle
+  canvasLabel?: string
+  readOnly?: boolean
   onChange: (map: ProcessMap) => void
+  onRelayout: (direction: CanvasDirection) => void
+  onLineStyleChange: (style: LineStyle) => void
 }
 
-function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes))
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges))
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
   const [draggingType, setDraggingType] = useState<{ type: ProcessNodeType; lane: SwimLane } | null>(null)
   const [editingNode, setEditingNode] = useState<Node | null>(null)
   const [showTimes, setShowTimes] = useState(false)
+  const [showMetrics, setShowMetrics] = useState(false)
+  const [showOutcomes, setShowOutcomes] = useState(false)
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+
+  function handleFullscreen() {
+    const el = canvasContainerRef.current?.closest('.canvas-fullscreen-target') as HTMLElement | null
+    if (!document.fullscreenElement) {
+      ;(el ?? document.documentElement).requestFullscreen?.()
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
 
   // Auto-fit when nodes are imported (canvas remounts with pre-loaded nodes)
   useEffect(() => {
@@ -211,6 +271,23 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
       return () => clearTimeout(t)
     }
   }, [])
+
+  // Regenerate edge styles when lineStyle changes
+  useEffect(() => {
+    setRfEdges(toRfEdges(processMap.edges, lineStyle))
+  }, [lineStyle, processMap.edges])
+
+  // Dim non-highlighted nodes when a path is selected
+  useEffect(() => {
+    if (highlightedNodes.size === 0) {
+      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1 } })))
+    } else {
+      setRfNodes(prev => prev.map(n => ({
+        ...n,
+        style: { ...n.style, opacity: highlightedNodes.has(n.id) ? 1 : 0.2 },
+      })))
+    }
+  }, [highlightedNodes])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -226,7 +303,7 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
         id: `e${connection.source}-${connection.target}`,
         source: connection.source,
         target: connection.target,
-        type: 'default',
+        type: lineStyle,
         style: { strokeWidth: 1.5, stroke: '#94a3b8' },
         markerEnd: EDGE_MARKER,
       }
@@ -241,22 +318,30 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
-    if (!draggingType) return
+    if (readOnly || !draggingType) return
 
-    // Use screenToFlowPosition so drop works correctly at any zoom/pan
     const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    const lane = laneYFromFlowY(flowPos.y, lanes)
-    const snappedY = laneYCenter(lanes, lane)
+    const isAnnotation = draggingType.type === 'swimlane' || draggingType.type === 'sticky'
+    const lane = isAnnotation ? (draggingType.lane as SwimLane) : laneYFromFlowY(flowPos.y, lanes)
+    const yPos = isAnnotation ? flowPos.y : laneYCenter(lanes, lane)
+
+    const baseStyle = highlightedNodes.size > 0 ? { opacity: 0.2 as number } : {}
+    const nodeStyle = draggingType.type === 'swimlane'
+      ? { ...baseStyle, width: 400, height: 200 }
+      : Object.keys(baseStyle).length > 0 ? baseStyle : undefined
 
     const newNode: Node = {
       id: `n${idCounter.current++}`,
       type: draggingType.type,
-      position: { x: Math.max(50, flowPos.x), y: snappedY },
+      position: { x: Math.max(50, flowPos.x), y: yPos },
+      zIndex: draggingType.type === 'sticky' ? 10 : draggingType.type === 'swimlane' ? -1 : 0,
+      style: nodeStyle,
       data: {
-        label: draggingType.type.charAt(0).toUpperCase() + draggingType.type.slice(1),
+        label: draggingType.type === 'swimlane' ? 'Lane' : draggingType.type === 'sticky' ? 'Note' : draggingType.type.charAt(0).toUpperCase() + draggingType.type.slice(1),
         lane,
         type: draggingType.type,
         showTimes,
+        nodeColor: draggingType.type === 'swimlane' ? '#dbeafe' : draggingType.type === 'sticky' ? '#fef9c3' : undefined,
       },
     }
     setRfNodes((prev) => {
@@ -304,10 +389,12 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
     setRfNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, showTimes: next } })))
   }
 
-  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane) {
+  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string) {
     setRfNodes((prev) => {
       const updated = prev.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane } } : n
+        n.id === id
+          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments, nodeColor } }
+          : n
       )
       commit(updated, rfEdges)
       return updated
@@ -316,15 +403,43 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={canvasContainerRef}>
       {/* Canvas toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/20 shrink-0 gap-2">
-        {/* Lane legend */}
+        {/* Lane legend + optional label chip */}
         <div className="flex items-center gap-2 flex-wrap">
+          {canvasLabel && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-100 text-violet-700 border border-violet-200">
+              {canvasLabel}
+            </span>
+          )}
           {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
             <span key={lane} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: LANE_LABEL_COLORS[lane] }}>
               <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane], border: `1.5px solid ${LANE_LABEL_COLORS[lane]}` }} />
               {lane}
+            </span>
+          ))}
+          {/* Separator + node type chips */}
+          <span className="text-muted-foreground/30 text-[10px] select-none">|</span>
+          {[
+            { label: 'Start/End', color: '#f97316' },
+            { label: 'Step', color: '#3b82f6' },
+            { label: 'Decision', color: '#a855f7', diamond: true },
+            { label: 'Auto', color: '#10b981' },
+            { label: 'Comms', color: '#f59e0b' },
+            { label: 'Lane', color: '#1d4ed8' },
+            { label: 'Note', color: '#fde047' },
+          ].map(({ label, color, diamond }) => (
+            <span key={label} className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+              <span
+                className="w-2 h-2 inline-block shrink-0"
+                style={{
+                  backgroundColor: color,
+                  borderRadius: diamond ? 0 : 2,
+                  transform: diamond ? 'rotate(45deg)' : undefined,
+                }}
+              />
+              {label}
             </span>
           ))}
         </div>
@@ -339,6 +454,70 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
             <Clock className="w-3 h-3" />
             {showTimes ? 'Hiding times' : 'Show times'}
           </button>
+
+          {/* Direction toggle */}
+          <button
+            onClick={() => onRelayout(direction === 'LR' ? 'TB' : 'LR')}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+            title={direction === 'LR' ? 'Switch to top-down layout' : 'Switch to left-right layout'}
+          >
+            {direction === 'LR' ? <ArrowRight className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+            {direction === 'LR' ? 'L→R' : 'T→B'}
+          </button>
+
+          {/* Line style toggle */}
+          <button
+            onClick={() => onLineStyleChange(lineStyle === 'default' ? 'step' : 'default')}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              lineStyle === 'step'
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+            title={lineStyle === 'step' ? 'Switch to curved lines' : 'Switch to straight lines'}
+          >
+            <GitBranch className="w-3 h-3" />
+            {lineStyle === 'step' ? 'Straight' : 'Curved'}
+          </button>
+          <button
+            onClick={handleFullscreen}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              isFullscreen
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+          </button>
+          <button
+            onClick={() => setShowMetrics(s => !s)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              showMetrics
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+          >
+            <BarChart2 className="w-3 h-3" /> Metrics
+          </button>
+          {!readOnly && (
+            <button
+              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) setHighlightedNodes(new Set()) }}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                showOutcomes
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+              )}
+            >
+              <GitMerge className="w-3 h-3" /> Outcomes
+            </button>
+          )}
         </div>
       </div>
 
@@ -347,6 +526,16 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
       >
+        {showMetrics && (
+          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
+        )}
+        {showOutcomes && (
+          <OutcomePanel
+            processMap={processMap}
+            onHighlight={setHighlightedNodes}
+            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()) }}
+          />
+        )}
         {/* Multi-select toolbar — appears when nodes are selected */}
         {selectedCount > 0 && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-foreground text-background rounded-lg px-3 py-1.5 shadow-lg text-xs font-medium">
@@ -368,15 +557,17 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeDoubleClick={handleNodeDoubleClick}
+          onNodeDoubleClick={readOnly ? undefined : handleNodeDoubleClick}
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
           nodeTypes={NODE_TYPES}
           minZoom={0.2}
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
-          deleteKeyCode="Delete"
+          deleteKeyCode={readOnly ? null : 'Delete'}
           multiSelectionKeyCode="Shift"
           selectionOnDrag
           panOnDrag={[1, 2]}
-          onNodesDelete={(deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
+          onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
           style={{ background: 'transparent' }}
         >
           {/* SwimlaneOverlay removed — free layout with color-coded nodes instead */}
@@ -384,7 +575,7 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
           <Controls />
         </ReactFlow>
 
-        <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />
+        {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
       </div>
 
       <MapQualityChecklist processMap={processMap} activeLanes={lanes} />
@@ -392,7 +583,9 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
       {editingNode && (
         <NodeEditDialog
           node={editingNode}
-          onSave={(id, label, time, lane) => handleEditSave(id, label, time, lane)}
+          onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor) =>
+            handleEditSave(id, label, time, lane, badge, durationMinutes, attachments, nodeColor)
+          }
           onDelete={() => { handleNodeDelete(editingNode.id); setEditingNode(null) }}
           onClose={() => setEditingNode(null)}
         />
@@ -406,10 +599,17 @@ interface ProcessCanvasProps {
   teamOwner: TeamOwner[]
   workato: boolean
   decagonL0: boolean
+  direction: CanvasDirection
+  lineStyle: LineStyle
+  canvasLabel?: string
+  readOnly?: boolean
   onChange: (map: ProcessMap) => void
+  onRelayout: (direction: CanvasDirection) => void
+  onLineStyleChange: (style: LineStyle) => void
+  layoutKey?: number
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, onChange }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey }: ProcessCanvasProps) {
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -427,11 +627,22 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
       })()
 
   // Re-mount canvas when nodes are replaced externally (e.g. paste from AI)
-  const canvasKey = `canvas-${processMap.nodes.length}-${processMap.nodes.map(n => n.id).join(',')}`
+  const canvasKey = `canvas-${processMap.nodes.length}-${processMap.nodes.map(n => n.id).join(',')}-${layoutKey ?? 0}`
 
   return (
     <ReactFlowProvider>
-      <CanvasInner key={canvasKey} processMap={processMap} lanes={lanes} onChange={onChange} />
+      <CanvasInner
+        key={canvasKey}
+        processMap={processMap}
+        lanes={lanes}
+        direction={direction}
+        lineStyle={lineStyle}
+        canvasLabel={canvasLabel}
+        readOnly={readOnly}
+        onChange={onChange}
+        onRelayout={onRelayout}
+        onLineStyleChange={onLineStyleChange}
+      />
     </ReactFlowProvider>
   )
 }

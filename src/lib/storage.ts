@@ -1,4 +1,4 @@
-import type { ProcessEntry } from './types'
+import type { FolderEntry, ProcessEntry } from './types'
 
 const PREFIX = 'processes/'
 
@@ -66,4 +66,35 @@ export async function listEntries(): Promise<ProcessEntry[]> {
 
 export function generateId(): string {
   return `proc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+export async function loadFolders(): Promise<FolderEntry[]> {
+  try {
+    const raw = await scope().get<FolderEntry[]>('folders/index')
+    return raw ?? []
+  } catch {
+    return []
+  }
+}
+
+export async function saveFolders(folders: FolderEntry[]): Promise<void> {
+  try {
+    await scope().put('folders/index', folders)
+  } catch { /* silent */ }
+}
+
+export async function saveFolder(folder: FolderEntry): Promise<void> {
+  const all = await loadFolders()
+  const idx = all.findIndex(f => f.id === folder.id)
+  if (idx >= 0) {
+    all[idx] = folder
+  } else {
+    all.push(folder)
+  }
+  await saveFolders(all)
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  const all = await loadFolders()
+  await saveFolders(all.filter(f => f.id !== id))
 }
