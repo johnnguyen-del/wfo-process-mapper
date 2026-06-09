@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, Clock, GitBranch, Map, Maximize2, Minimize2 } from 'lucide-react'
+import { ArrowDown, ArrowRight, BarChart2, Clock, GitBranch, Map, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -29,6 +29,7 @@ import NodePalette from './NodePalette'
 import MapQualityChecklist from './MapQualityChecklist'
 import NodeEditDialog from './NodeEditDialog'
 import CanvasLegend from './CanvasLegend'
+import MetricsDashboard from './MetricsDashboard'
 
 const NODE_TYPES = {
   step: StepNode,
@@ -212,6 +213,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
   const [editingNode, setEditingNode] = useState<Node | null>(null)
   const [showTimes, setShowTimes] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
+  const [showMetrics, setShowMetrics] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -424,6 +426,17 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
           >
             {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
+          <button
+            onClick={() => setShowMetrics(s => !s)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              showMetrics
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+          >
+            <BarChart2 className="w-3 h-3" /> Metrics
+          </button>
         </div>
       </div>
 
@@ -433,6 +446,9 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
         onDrop={handleDrop}
       >
         {showLegend && <CanvasLegend onClose={() => setShowLegend(false)} />}
+        {showMetrics && (
+          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
+        )}
         {/* Multi-select toolbar — appears when nodes are selected */}
         {selectedCount > 0 && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-foreground text-background rounded-lg px-3 py-1.5 shadow-lg text-xs font-medium">
