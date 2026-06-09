@@ -29,7 +29,7 @@ export default function MetricsDashboard({ processMap, onClose }: MetricsDashboa
       <div className="grid grid-cols-2 gap-2 mb-3">
         <Stat label="Touchpoints" value={m.totalTouchpoints} />
         <Stat label="Transitions" value={m.totalTransitions} />
-        <Stat label="Total Duration" value={`${m.totalDurationMinutes} min`} />
+        <Stat label="Total Duration" value={m.totalTouchpoints > 0 ? `${m.totalDurationMinutes} min` : '—'} />
         <Stat label="Avg per Step" value={m.totalTouchpoints > 0 ? `${m.avgDurationMinutes} min` : '—'} />
       </div>
       {m.missingDuration.length > 0 && (
@@ -52,8 +52,8 @@ export default function MetricsDashboard({ processMap, onClose }: MetricsDashboa
           ))}
         </div>
       )}
-      {activeLanes.length === 0 && (
-        <p className="text-muted-foreground text-center py-2">Add nodes to see metrics</p>
+      {m.totalTouchpoints === 0 && (
+        <p className="text-muted-foreground text-center py-2">Add step or decision nodes to see metrics</p>
       )}
     </div>
   )
