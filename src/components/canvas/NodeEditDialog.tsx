@@ -3,7 +3,8 @@ import type { Node } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, X } from 'lucide-react'
-import type { SwimLane, ProcessNode } from '@/lib/types'
+import type { KbLink, SwimLane, ProcessNode } from '@/lib/types'
+import KbLinksPanel from './KbLinksPanel'
 
 const LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
 const LANE_COLORS: Record<string, string> = {
@@ -13,7 +14,7 @@ const LANE_COLORS: Record<string, string> = {
 
 interface NodeEditDialogProps {
   node: Node
-  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number) => void
+  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[]) => void
   onDelete: () => void
   onClose: () => void
 }
@@ -29,6 +30,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
       ? String((node.data as any).durationMinutes)
       : ''
   )
+  const [attachments, setAttachments] = useState<KbLink[]>((node.data as any).attachments ?? [])
 
   const isStartEnd = node.type === 'start' || node.type === 'end'
 
@@ -125,6 +127,14 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
             </div>
           </>
         )}
+
+        <div className="pt-1">
+          <KbLinksPanel
+            links={attachments}
+            onChange={setAttachments}
+            label="Node Attachments"
+          />
+        </div>
       </div>
 
       <div className="flex gap-2 mt-4">
@@ -132,7 +142,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined)} className="flex-1">
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined, attachments.length > 0 ? attachments : undefined)} className="flex-1">
           Save
         </Button>
       </div>

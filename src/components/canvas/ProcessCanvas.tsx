@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import type { ProcessMap, ProcessNode, ProcessEdge, ProcessNodeType, SwimLane, TeamOwner, CanvasDirection, LineStyle } from '@/lib/types'
+import type { KbLink, ProcessMap, ProcessNode, ProcessEdge, ProcessNodeType, SwimLane, TeamOwner, CanvasDirection, LineStyle } from '@/lib/types'
 import StepNode from './node-types/StepNode'
 import DecisionNode from './node-types/DecisionNode'
 import AutomationNode from './node-types/AutomationNode'
@@ -70,7 +70,7 @@ function toRfNodes(nodes: ProcessNode[]): Node[] {
     id: n.id,
     type: n.type,
     position: n.position,
-    data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type, badge: n.badge, durationMinutes: n.durationMinutes },
+    data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type, badge: n.badge, durationMinutes: n.durationMinutes, attachments: n.attachments },
   }))
 }
 
@@ -111,6 +111,7 @@ function fromRfNodes(rfNodes: Node[]): ProcessNode[] {
       timeEstimate: (n.data as any).timeEstimate,
       badge: (n.data as any).badge,
       durationMinutes: (n.data as any).durationMinutes,
+      attachments: (n.data as any).attachments,
       position: n.position,
     }))
 }
@@ -358,10 +359,12 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, showTimes: next } })))
   }
 
-  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number) {
+  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[]) {
     setRfNodes((prev) => {
       const updated = prev.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes } } : n
+        n.id === id
+          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments } }
+          : n
       )
       commit(updated, rfEdges)
       return updated
@@ -539,7 +542,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
       {editingNode && (
         <NodeEditDialog
           node={editingNode}
-          onSave={(id, label, time, lane, badge, durationMinutes) => handleEditSave(id, label, time, lane, badge, durationMinutes)}
+          onSave={(id, label, time, lane, badge, durationMinutes, attachments) => handleEditSave(id, label, time, lane, badge, durationMinutes, attachments)}
           onDelete={() => { handleNodeDelete(editingNode.id); setEditingNode(null) }}
           onClose={() => setEditingNode(null)}
         />

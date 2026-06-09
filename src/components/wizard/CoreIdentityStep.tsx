@@ -61,6 +61,19 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
       </FieldGroup>
 
       <FieldGroup
+        label="Source Link (Blowout Link)"
+        hint="URL to the original process documentation — Guru card, Notion page, or GDoc"
+      >
+        <input
+          type="url"
+          value={entry.sourceUrl ?? ''}
+          onChange={e => onChange({ sourceUrl: e.target.value || undefined })}
+          placeholder="https://... (original process documentation)"
+          className="w-full border rounded px-3 py-2 text-sm"
+        />
+      </FieldGroup>
+
+      <FieldGroup
         label="Team Owner"
         hint="All teams that actively handle this workflow — select all that apply"
         required

@@ -120,7 +120,7 @@ export default function ProcessBuilder() {
       case 3: return <AutomationStep entry={entry} onChange={patch} />
       case 4: return <CommsStep entry={entry} onChange={patch} />
       case 5: return <TaxonomyStep entry={entry} onChange={patch} />
-      case 6: return <ReviewStep entry={entry} onSubmit={handleSubmit} submitting={submitting} />
+      case 6: return <ReviewStep entry={entry} onChange={patch} onSubmit={handleSubmit} submitting={submitting} />
       default: return null
     }
   }
