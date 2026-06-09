@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import type { ProcessEntry, Domain, FolderEntry } from '@/lib/types'
-import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder } from '@/lib/storage'
-import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2 } from 'lucide-react'
+import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder, saveFolders } from '@/lib/storage'
+import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import FolderSidebar from '@/components/FolderSidebar'
@@ -30,6 +30,7 @@ export default function ProcessList() {
   const [owner] = useState(isOwner)
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   function load() {
     setLoading(true)
@@ -49,6 +50,19 @@ export default function ProcessList() {
     }
     await saveFolder(folder)
     setFolders(prev => [...prev, folder])
+  }
+
+  async function handleReorderFolders(reordered: FolderEntry[]) {
+    setFolders(reordered)
+    await saveFolders(reordered)
+  }
+
+  function handleAssignProcess(processId: string, folderId: string | null) {
+    const entry = entries.find(e => e.id === processId)
+    if (!entry) return
+    const updated = { ...entry, folderId: folderId ?? undefined }
+    saveEntry(updated)
+    setEntries(prev => prev.map(e => e.id === processId ? updated : e))
   }
 
   async function handleDeleteFolder(id: string) {
@@ -84,9 +98,16 @@ export default function ProcessList() {
     }
   }
 
-  const visibleEntries = selectedFolderId
+  const folderFiltered = selectedFolderId
     ? entries.filter(e => e.folderId === selectedFolderId)
     : entries
+
+  const visibleEntries = query.trim()
+    ? folderFiltered.filter(e =>
+        e.processName.toLowerCase().includes(query.toLowerCase()) ||
+        (e.domain ?? '').toLowerCase().includes(query.toLowerCase())
+      )
+    : folderFiltered
 
   const domains = ['Banking', 'Transfers', 'Invest', 'Security & Risk'] as Domain[]
   const grouped = Object.fromEntries(
@@ -98,10 +119,13 @@ export default function ProcessList() {
     <div className="flex min-h-screen">
       <FolderSidebar
         folders={folders}
+        entries={entries}
         selectedFolderId={selectedFolderId}
         onSelect={setSelectedFolderId}
         onCreateFolder={handleCreateFolder}
         onDeleteFolder={handleDeleteFolder}
+        onReorderFolders={handleReorderFolders}
+        onAssignProcess={handleAssignProcess}
       />
       <div className="flex-1 p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -128,6 +152,26 @@ export default function ProcessList() {
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search processes…"
+          className="w-full max-w-sm border rounded-lg pl-8 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/20"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {loading ? (
         <div className="text-muted-foreground text-sm py-12 text-center">Loading…</div>
       ) : visibleEntries.length === 0 ? (
@@ -144,7 +188,16 @@ export default function ProcessList() {
                 <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">{domain}</h2>
                 <div className="border rounded-lg divide-y">
                   {domainEntries.map((entry) => (
-                    <EntryRow key={entry.id} entry={entry} owner={owner} onDelete={handleDelete} />
+                    <EntryRow
+                      key={entry.id}
+                      entry={entry}
+                      owner={owner}
+                      onDelete={handleDelete}
+                      onDragStart={(e, id) => {
+                        e.dataTransfer.setData('process-id', id)
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                    />
                   ))}
                 </div>
               </section>
@@ -155,7 +208,16 @@ export default function ProcessList() {
               <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Drafts (no domain)</h2>
               <div className="border rounded-lg divide-y">
                 {undomained.map((entry) => (
-                  <EntryRow key={entry.id} entry={entry} owner={owner} onDelete={handleDelete} />
+                  <EntryRow
+                    key={entry.id}
+                    entry={entry}
+                    owner={owner}
+                    onDelete={handleDelete}
+                    onDragStart={(e, id) => {
+                      e.dataTransfer.setData('process-id', id)
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                  />
                 ))}
               </div>
             </section>
@@ -167,9 +229,23 @@ export default function ProcessList() {
   )
 }
 
-function EntryRow({ entry, owner, onDelete }: { entry: ProcessEntry; owner: boolean; onDelete: (e: ProcessEntry) => void }) {
+function EntryRow({
+  entry,
+  owner,
+  onDelete,
+  onDragStart,
+}: {
+  entry: ProcessEntry
+  owner: boolean
+  onDelete: (e: ProcessEntry) => void
+  onDragStart: (e: React.DragEvent, entryId: string) => void
+}) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
+    <div
+      draggable
+      onDragStart={e => onDragStart(e, entry.id)}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-grab active:cursor-grabbing"
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm truncate">
