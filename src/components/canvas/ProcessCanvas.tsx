@@ -221,7 +221,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
   // Regenerate edge styles when lineStyle changes
   useEffect(() => {
     setRfEdges(toRfEdges(processMap.edges, lineStyle))
-  }, [lineStyle])
+  }, [lineStyle, processMap.edges])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -237,7 +237,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
         id: `e${connection.source}-${connection.target}`,
         source: connection.source,
         target: connection.target,
-        type: 'default',
+        type: lineStyle,
         style: { strokeWidth: 1.5, stroke: '#94a3b8' },
         markerEnd: EDGE_MARKER,
       }
