@@ -6,7 +6,7 @@ export type JiraBoard = 'BOPSIT' | 'BOPSFUND' | 'EOC' | 'BOSM' | 'BOTAX' | 'WORP
 export type OutboundComm = 'None' | 'Manual' | 'Workato' | 'Auto Comms' | 'Docusign'
 export type SpoofableRisk = 'High' | 'Medium' | 'Low' | 'N/A'
 export type OpsDomain = 'C&B' | 'I&O' | 'I&C' | 'C&D'
-export type ProcessNodeType = 'start' | 'end' | 'step' | 'decision' | 'automation' | 'comms'
+export type ProcessNodeType = 'start' | 'end' | 'step' | 'decision' | 'automation' | 'comms' | 'swimlane' | 'sticky'
 export type SwimLane = 'CS' | 'Ops' | 'Fraud Ops' | 'L2 - Risk' | 'Automation' | 'Client'
 
 export interface KbLink {
@@ -37,6 +37,9 @@ export interface ProcessNode {
     ownerNote?: string
   }
   attachments?: KbLink[]
+  nodeColor?: string    // hex color — swimlane background or sticky note colour
+  nodeWidth?: number    // px — stored after NodeResizer drag (swimlane only)
+  nodeHeight?: number   // px — stored after NodeResizer drag (swimlane only)
 }
 
 export interface ProcessEdge {
