@@ -44,6 +44,7 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
           value={entry.domain ? [entry.domain] : []}
           onChange={(v) => onChange({ domain: v[0] ?? '' })}
           single
+          customizable
         />
       </FieldGroup>
 
@@ -82,6 +83,7 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
           options={TEAM_OWNERS}
           value={entry.teamOwner}
           onChange={(v) => onChange({ teamOwner: v })}
+          customizable
         />
       </FieldGroup>
     </div>

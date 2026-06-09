@@ -48,6 +48,7 @@ export default function CommsStep({ entry, onChange }: CommsStepProps) {
           options={OUTBOUND_COMMS}
           value={entry.outboundComms}
           onChange={(v) => onChange({ outboundComms: v })}
+          customizable
         />
       </FieldGroup>
 

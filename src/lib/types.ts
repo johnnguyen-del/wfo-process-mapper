@@ -1,11 +1,11 @@
-export type Domain = 'Banking' | 'Transfers' | 'Invest' | 'Security & Risk' | 'PRR'
-export type TeamOwner = 'CS' | 'Ops' | 'Fraud Ops' | 'L2 - Risk'
+export type Domain = 'Banking' | 'Transfers' | 'Invest' | 'Security & Risk' | 'PRR' | (string & {})
+export type TeamOwner = 'CS' | 'Ops' | 'Fraud Ops' | 'L2 - Risk' | (string & {})
 export type VolumeTier = 'High' | 'Medium' | 'Low'
-export type UserTool = 'Atlas' | 'Persona' | 'OAS' | 'JIRA' | 'Google Sheets' | 'DOCX'
-export type JiraBoard = 'BOPSIT' | 'BOPSFUND' | 'EOC' | 'BOSM' | 'BOTAX' | 'WORP' | 'BOAO' | 'LEDGE' | 'DAM' | 'FRAUD' | 'DOCX'
-export type OutboundComm = 'None' | 'Manual' | 'Workato' | 'Auto Comms' | 'Docusign'
+export type UserTool = 'Atlas' | 'Persona' | 'OAS' | 'JIRA' | 'Google Sheets' | 'DOCX' | (string & {})
+export type JiraBoard = 'BOPSIT' | 'BOPSFUND' | 'EOC' | 'BOSM' | 'BOTAX' | 'WORP' | 'BOAO' | 'LEDGE' | 'DAM' | 'FRAUD' | 'DOCX' | (string & {})
+export type OutboundComm = 'None' | 'Manual' | 'Workato' | 'Auto Comms' | 'Docusign' | (string & {})
 export type SpoofableRisk = 'High' | 'Medium' | 'Low' | 'N/A'
-export type OpsDomain = 'C&B' | 'I&O' | 'I&C' | 'C&D'
+export type OpsDomain = 'C&B' | 'I&O' | 'I&C' | 'C&D' | (string & {})
 export type ProcessNodeType = 'start' | 'end' | 'step' | 'decision' | 'automation' | 'comms' | 'swimlane' | 'sticky'
 export type SwimLane = 'CS' | 'Ops' | 'Fraud Ops' | 'L2 - Risk' | 'Automation' | 'Client'
 

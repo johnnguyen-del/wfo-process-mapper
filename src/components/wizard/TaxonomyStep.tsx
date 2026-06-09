@@ -32,6 +32,7 @@ export default function TaxonomyStep({ entry, onChange }: TaxonomyStepProps) {
             options={OPS_DOMAINS}
             value={entry.opsDomains}
             onChange={(v) => onChange({ opsDomains: v })}
+            customizable
           />
         </FieldGroup>
       )}
