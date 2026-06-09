@@ -226,7 +226,7 @@ export default function ProcessBuilder() {
         </div>
 
         {/* Right: Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden canvas-fullscreen-target">
           <div className="px-4 py-2 border-b text-xs text-muted-foreground shrink-0">
             Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove
           </div>

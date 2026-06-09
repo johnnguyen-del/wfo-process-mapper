@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, Clock, GitBranch } from 'lucide-react'
+import { ArrowDown, ArrowRight, Clock, GitBranch, Map, Maximize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -28,6 +28,7 @@ import StartEndNode from './node-types/StartEndNode'
 import NodePalette from './NodePalette'
 import MapQualityChecklist from './MapQualityChecklist'
 import NodeEditDialog from './NodeEditDialog'
+import CanvasLegend from './CanvasLegend'
 
 const NODE_TYPES = {
   step: StepNode,
@@ -208,7 +209,18 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
   const [draggingType, setDraggingType] = useState<{ type: ProcessNodeType; lane: SwimLane } | null>(null)
   const [editingNode, setEditingNode] = useState<Node | null>(null)
   const [showTimes, setShowTimes] = useState(false)
+  const [showLegend, setShowLegend] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+
+  function handleFullscreen() {
+    const el = canvasContainerRef.current?.closest('.canvas-fullscreen-target') as HTMLElement | null
+    if (!document.fullscreenElement) {
+      ;(el ?? document.documentElement).requestFullscreen?.()
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
 
   // Auto-fit when nodes are imported (canvas remounts with pre-loaded nodes)
   useEffect(() => {
@@ -327,7 +339,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={canvasContainerRef}>
       {/* Canvas toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/20 shrink-0 gap-2">
         {/* Lane legend */}
@@ -378,6 +390,24 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
             <GitBranch className="w-3 h-3" />
             {lineStyle === 'step' ? 'Straight' : 'Curved'}
           </button>
+          <button
+            onClick={() => setShowLegend(s => !s)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              showLegend
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+          >
+            <Map className="w-3 h-3" /> Legend
+          </button>
+          <button
+            onClick={handleFullscreen}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
+            title="Toggle fullscreen"
+          >
+            <Maximize2 className="w-3 h-3" />
+          </button>
         </div>
       </div>
 
@@ -386,6 +416,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
       >
+        {showLegend && <CanvasLegend onClose={() => setShowLegend(false)} />}
         {/* Multi-select toolbar — appears when nodes are selected */}
         {selectedCount > 0 && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-foreground text-background rounded-lg px-3 py-1.5 shadow-lg text-xs font-medium">
