@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, BarChart2, Clock, GitBranch, Map, Maximize2, Minimize2 } from 'lucide-react'
+import { ArrowDown, ArrowRight, BarChart2, Clock, GitBranch, GitMerge, Map, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -30,6 +30,7 @@ import MapQualityChecklist from './MapQualityChecklist'
 import NodeEditDialog from './NodeEditDialog'
 import CanvasLegend from './CanvasLegend'
 import MetricsDashboard from './MetricsDashboard'
+import OutcomePanel from './OutcomePanel'
 
 const NODE_TYPES = {
   step: StepNode,
@@ -216,6 +217,8 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showTimes, setShowTimes] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
+  const [showOutcomes, setShowOutcomes] = useState(false)
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
   const [isFullscreen, setIsFullscreen] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -249,6 +252,18 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   useEffect(() => {
     setRfEdges(toRfEdges(processMap.edges, lineStyle))
   }, [lineStyle, processMap.edges])
+
+  // Dim non-highlighted nodes when a path is selected
+  useEffect(() => {
+    if (highlightedNodes.size === 0) {
+      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1 } })))
+    } else {
+      setRfNodes(prev => prev.map(n => ({
+        ...n,
+        style: { ...n.style, opacity: highlightedNodes.has(n.id) ? 1 : 0.2 },
+      })))
+    }
+  }, [highlightedNodes])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -444,6 +459,19 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           >
             <BarChart2 className="w-3 h-3" /> Metrics
           </button>
+          {!readOnly && (
+            <button
+              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) setHighlightedNodes(new Set()) }}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                showOutcomes
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+              )}
+            >
+              <GitMerge className="w-3 h-3" /> Outcomes
+            </button>
+          )}
         </div>
       </div>
 
@@ -455,6 +483,13 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         {showLegend && <CanvasLegend onClose={() => setShowLegend(false)} />}
         {showMetrics && (
           <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
+        )}
+        {showOutcomes && (
+          <OutcomePanel
+            processMap={processMap}
+            onHighlight={setHighlightedNodes}
+            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()) }}
+          />
         )}
         {/* Multi-select toolbar — appears when nodes are selected */}
         {selectedCount > 0 && (
