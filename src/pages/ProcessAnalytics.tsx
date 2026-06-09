@@ -27,7 +27,7 @@ export default function ProcessAnalytics() {
     listEntries().then(entries => {
       setRows(
         entries.map(entry => {
-          const m = computeMetrics(entry.processMap)
+          const m = computeMetrics(entry.processMap ?? { nodes: [], edges: [] })
           return {
             entry,
             totalTouchpoints: m.totalTouchpoints,
@@ -39,14 +39,14 @@ export default function ProcessAnalytics() {
         })
       )
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [])
 
   const sorted = [...rows].sort((a, b) => {
     if (sortBy === 'name') return (a.entry.processName || '').localeCompare(b.entry.processName || '')
-    if (sortBy === 'touchpoints') return b.totalTouchpoints - a.totalTouchpoints
-    if (sortBy === 'transitions') return b.totalTransitions - a.totalTransitions
-    return b.totalDurationMinutes - a.totalDurationMinutes
+    if (sortBy === 'touchpoints') return b.totalTouchpoints - a.totalTouchpoints || (a.entry.processName || '').localeCompare(b.entry.processName || '')
+    if (sortBy === 'transitions') return b.totalTransitions - a.totalTransitions || (a.entry.processName || '').localeCompare(b.entry.processName || '')
+    return b.totalDurationMinutes - a.totalDurationMinutes || (a.entry.processName || '').localeCompare(b.entry.processName || '')
   })
 
   return (
@@ -116,7 +116,7 @@ export default function ProcessAnalytics() {
                       <div className="text-xs text-muted-foreground">
                         {entry.domain}
                         {missingCount > 0 && (
-                          <span className="ml-2 text-amber-500">⏱ {missingCount} missing</span>
+                          <span className="ml-2 text-amber-500">⏱ {missingCount} step{missingCount !== 1 ? 's' : ''} missing duration</span>
                         )}
                       </div>
                     </td>
@@ -124,7 +124,7 @@ export default function ProcessAnalytics() {
                     <td className="px-4 py-2.5 text-right tabular-nums">{totalTransitions}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">{totalDurationMinutes}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {totalTouchpoints > 0 ? avgDurationMinutes : '—'}
+                      {totalDurationMinutes > 0 ? avgDurationMinutes : '—'}
                     </td>
                   </tr>
                 ))}
