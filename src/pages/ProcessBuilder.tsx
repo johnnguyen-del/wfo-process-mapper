@@ -13,7 +13,7 @@ import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import AiChatPanel from '@/components/AiChatPanel'
-import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle } from '@/lib/types'
+import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode } from '@/lib/types'
 import { generateId, loadEntry, saveEntry } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
 import { autoLayout } from '@/lib/export'
@@ -30,6 +30,7 @@ export default function ProcessBuilder() {
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [canvasDirection, setCanvasDirection] = useState<CanvasDirection>('LR')
   const [lineStyle, setLineStyle] = useState<LineStyle>('default')
+  const [viewMode, setViewMode] = useState<ViewMode>('current')
 
   useEffect(() => {
     if (id) {

@@ -33,6 +33,7 @@ export interface ProcessEdge {
 
 export type CanvasDirection = 'LR' | 'TB'
 export type LineStyle = 'default' | 'step'
+export type ViewMode = 'current' | 'optimization' | 'compare'
 
 export interface ProcessMap {
   nodes: ProcessNode[]
@@ -75,6 +76,7 @@ export interface ProcessEntry {
 
   // Process Map
   processMap: ProcessMap
+  optimizationMap?: ProcessMap   // stores the "ideal flow" canvas for Mirror Mode
 
   // Meta
   submittedBy: string
@@ -108,6 +110,7 @@ export function emptyEntry(id: string): ProcessEntry {
     docReview: false,
     otherMetrics: '',
     processMap: { nodes: [], edges: [] },
+    optimizationMap: undefined,   // new
     submittedBy: '',
     submittedAt: '',
     notionPageUrl: null,
