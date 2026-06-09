@@ -311,6 +311,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         type: draggingType.type,
         showTimes,
       },
+      style: highlightedNodes.size > 0 ? { opacity: 0.2 } : undefined,
     }
     setRfNodes((prev) => {
       const updated = [...prev, newNode]

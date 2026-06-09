@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { ProcessMap } from '@/lib/types'
 
 // DFS to find all paths from start nodes to end nodes
@@ -37,7 +38,7 @@ interface OutcomePanelProps {
 }
 
 export default function OutcomePanel({ processMap, onHighlight, onClose }: OutcomePanelProps) {
-  const paths = findPaths(processMap)
+  const paths = useMemo(() => findPaths(processMap), [processMap])
   const nodeMap = new Map(processMap.nodes.map(n => [n.id, n]))
 
   function pathDuration(path: string[]): number {
@@ -47,7 +48,7 @@ export default function OutcomePanel({ processMap, onHighlight, onClose }: Outco
   return (
     <div className="absolute right-2 top-12 z-30 bg-background border rounded-lg shadow-lg p-3 w-72 max-h-[60vh] overflow-y-auto text-xs">
       <div className="flex justify-between items-center mb-2">
-        <span className="font-semibold">Outcomes ({paths.length})</span>
+        <span className="font-semibold">Outcomes ({paths.length}{paths.length === 50 ? '+' : ''})</span>
         <button
           onClick={() => { onHighlight(new Set()); onClose() }}
           className="text-muted-foreground hover:text-foreground leading-none"
@@ -63,9 +64,10 @@ export default function OutcomePanel({ processMap, onHighlight, onClose }: Outco
       {paths.map((path, i) => {
         const endNode = nodeMap.get(path[path.length - 1])
         const dur = pathDuration(path)
+        const workSteps = Math.max(0, path.length - 2)
         return (
           <button
-            key={i}
+            key={path.join('-')}
             onClick={() => onHighlight(new Set(path))}
             className="w-full text-left p-2 rounded border mb-1.5 hover:bg-muted/40 transition-colors text-xs"
           >
@@ -73,7 +75,7 @@ export default function OutcomePanel({ processMap, onHighlight, onClose }: Outco
               Outcome {i + 1}: {endNode?.label ?? 'End'}
             </div>
             <div className="text-muted-foreground">
-              {path.length} step{path.length !== 1 ? 's' : ''}
+              {workSteps} step{workSteps !== 1 ? 's' : ''}
               {dur > 0 ? ` · ${dur} min` : ''}
             </div>
           </button>
