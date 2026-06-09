@@ -15,7 +15,7 @@ import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
 import DetailsTab from '@/components/wizard/DetailsTab'
-import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry, type EditLogEntry } from '@/lib/types'
+import { emptyEntry, type ProcessEntry, type ProcessMap, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry, type EditLogEntry } from '@/lib/types'
 import { generateId, loadEntry, saveEntry, loadFolders } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
 import { autoLayout } from '@/lib/export'
@@ -71,6 +71,9 @@ export default function ProcessBuilder() {
   const navigate = useNavigate()
   const [entry, setEntry] = useState<ProcessEntry>(() => emptyEntry(id ?? generateId()))
   const lastSavedRef = useRef<ProcessEntry | null>(null)
+  // Direct getter into CanvasInner's live rfNodes state — bypasses the
+  // entry.processMap sync chain which can be stale at save time.
+  const getCanvasMapRef = useRef<(() => ProcessMap) | null>(null)
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [leftTab, setLeftTab] = useState<'form' | 'ai' | 'details'>('form')
@@ -125,9 +128,13 @@ export default function ProcessBuilder() {
   function handleSave() {
     const now = new Date().toISOString()
     const by = (window as any).MagicAuth?.viewer?.()?.email ?? 'unknown'
-    const trackingPatch = appendLog(entry, 'saved', by, now, lastSavedRef.current)
+    // Read fresh positions directly from CanvasInner's rfNodes state.
+    // entry.processMap can be one render behind after a drag; the getter always returns current positions.
+    const freshProcessMap = getCanvasMapRef.current?.() ?? entry.processMap
+    const entryWithFreshMap = { ...entry, processMap: freshProcessMap }
+    const trackingPatch = appendLog(entryWithFreshMap, 'saved', by, now, lastSavedRef.current)
     const saved: ProcessEntry = {
-      ...entry,
+      ...entryWithFreshMap,
       ...trackingPatch,
       lastReviewed: entry.lastReviewed || now.split('T')[0],
       status: entry.status === 'submitted' ? 'submitted' as const : 'draft' as const,
@@ -451,6 +458,7 @@ export default function ProcessBuilder() {
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}
                 layoutKey={layoutKey}
+                onRegisterGetter={(getter) => { getCanvasMapRef.current = getter }}
               />
             )}
             {viewMode === 'optimization' && (
