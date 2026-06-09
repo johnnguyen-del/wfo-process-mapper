@@ -64,7 +64,11 @@ export default function FolderSidebar({
             <span className="truncate">{folder.name}</span>
           </button>
           <button
-            onClick={() => onDeleteFolder(folder.id)}
+            onClick={() => {
+              if (window.confirm(`Delete folder "${folder.name}"?`)) {
+                onDeleteFolder(folder.id)
+              }
+            }}
             className="opacity-0 group-hover:opacity-100 shrink-0 text-muted-foreground hover:text-red-500 transition-all p-0.5"
             title="Delete folder"
           >

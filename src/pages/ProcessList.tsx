@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import type { ProcessEntry, Domain, FolderEntry } from '@/lib/types'
-import { listEntries, loadFolders, saveFolder, deleteFolder } from '@/lib/storage'
+import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder } from '@/lib/storage'
 import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -53,6 +53,15 @@ export default function ProcessList() {
 
   async function handleDeleteFolder(id: string) {
     await deleteFolder(id)
+    // Clear folderId from any processes that pointed to this folder
+    const affected = entries.filter(e => e.folderId === id)
+    for (const entry of affected) {
+      const updated = { ...entry, folderId: undefined }
+      saveEntry(updated)
+    }
+    if (affected.length > 0) {
+      setEntries(prev => prev.map(e => e.folderId === id ? { ...e, folderId: undefined } : e))
+    }
     setFolders(prev => prev.filter(f => f.id !== id))
     if (selectedFolderId === id) setSelectedFolderId(null)
   }
@@ -94,12 +103,13 @@ export default function ProcessList() {
         onCreateFolder={handleCreateFolder}
         onDeleteFolder={handleDeleteFolder}
       />
-      <div className="flex-1 p-8 max-w-5xl">
+      <div className="flex-1 p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">WFO Process Mapper</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {entries.length} process{entries.length !== 1 ? 'es' : ''} captured
+            {visibleEntries.length} process{visibleEntries.length !== 1 ? 'es' : ''}
+            {selectedFolderId ? ' in folder' : ' captured'}
             {owner && <span className="ml-2 text-xs bg-foreground text-background px-1.5 py-0.5 rounded font-medium">Owner</span>}
           </p>
         </div>

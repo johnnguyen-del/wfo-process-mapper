@@ -198,7 +198,7 @@ export default function ProcessBuilder() {
               title="Assign to folder"
             >
               <option value="">No folder</option>
-              {folders.map(f => (
+              {folders.filter(f => !f.parentId).map(f => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
             </select>
