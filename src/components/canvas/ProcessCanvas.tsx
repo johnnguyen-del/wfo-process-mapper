@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, Clock, GitBranch, Map, Maximize2 } from 'lucide-react'
+import { ArrowDown, ArrowRight, Clock, GitBranch, Map, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -210,6 +210,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
   const [editingNode, setEditingNode] = useState<Node | null>(null)
   const [showTimes, setShowTimes] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
@@ -221,6 +222,14 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
       document.exitFullscreen?.()
     }
   }
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
 
   // Auto-fit when nodes are imported (canvas remounts with pre-loaded nodes)
   useEffect(() => {
@@ -403,10 +412,15 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
           </button>
           <button
             onClick={handleFullscreen}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
-            title="Toggle fullscreen"
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              isFullscreen
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
-            <Maximize2 className="w-3 h-3" />
+            {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
         </div>
       </div>
