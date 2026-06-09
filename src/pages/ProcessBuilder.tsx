@@ -13,9 +13,10 @@ import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import AiChatPanel from '@/components/AiChatPanel'
-import { emptyEntry, type ProcessEntry } from '@/lib/types'
+import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle } from '@/lib/types'
 import { generateId, loadEntry, saveEntry } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
+import { autoLayout } from '@/lib/export'
 import type { FormFillPatch } from '@/lib/ai'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +28,8 @@ export default function ProcessBuilder() {
   const [submitting, setSubmitting] = useState(false)
   const [leftTab, setLeftTab] = useState<'form' | 'ai'>('form')
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+  const [canvasDirection, setCanvasDirection] = useState<CanvasDirection>('LR')
+  const [lineStyle, setLineStyle] = useState<LineStyle>('default')
 
   useEffect(() => {
     if (id) {
@@ -90,6 +93,12 @@ export default function ProcessBuilder() {
     setStep(1) // always jump to Core Identity regardless of current step
     const name = (fillPatch as any).processName
     toast.success(name ? `Applied: ${name}` : 'Fields applied — review the form')
+  }
+
+  function handleRelayout(direction: CanvasDirection) {
+    setCanvasDirection(direction)
+    const relaidNodes = autoLayout(entry.processMap.nodes, entry.processMap.edges, direction)
+    patch({ processMap: { nodes: relaidNodes, edges: entry.processMap.edges } })
   }
 
   function renderStep() {
@@ -227,7 +236,11 @@ export default function ProcessBuilder() {
               teamOwner={entry.teamOwner}
               workato={entry.workato}
               decagonL0={entry.decagonL0}
+              direction={canvasDirection}
+              lineStyle={lineStyle}
               onChange={(map) => patch({ processMap: map })}
+              onRelayout={handleRelayout}
+              onLineStyleChange={setLineStyle}
             />
           </div>
         </div>

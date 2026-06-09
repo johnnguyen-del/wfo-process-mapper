@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock } from 'lucide-react'
+import { ArrowDown, ArrowRight, Clock, GitBranch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import type { ProcessMap, ProcessNode, ProcessEdge, ProcessNodeType, SwimLane, TeamOwner } from '@/lib/types'
+import type { ProcessMap, ProcessNode, ProcessEdge, ProcessNodeType, SwimLane, TeamOwner, CanvasDirection, LineStyle } from '@/lib/types'
 import StepNode from './node-types/StepNode'
 import DecisionNode from './node-types/DecisionNode'
 import AutomationNode from './node-types/AutomationNode'
@@ -77,7 +77,7 @@ function edgeColor(label?: string): string {
   return '#f59e0b' // amber for other conditions
 }
 
-function toRfEdges(edges: ProcessEdge[]): Edge[] {
+function toRfEdges(edges: ProcessEdge[], lineStyle: LineStyle = 'default'): Edge[] {
   return edges.map((e) => {
     const color = edgeColor(e.label)
     return ({
@@ -85,7 +85,7 @@ function toRfEdges(edges: ProcessEdge[]): Edge[] {
     source: e.source,
     target: e.target,
     label: e.label || undefined,
-    type: 'default',
+    type: lineStyle,
     style: { strokeWidth: e.label ? 2 : 1.5, stroke: color },
     markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
     labelStyle: { fontSize: 10, fontWeight: 700, fill: color },
@@ -192,13 +192,17 @@ function SwimlaneOverlay({ lanes, populatedLanes }: { lanes: SwimLane[]; populat
 interface CanvasInnerProps {
   processMap: ProcessMap
   lanes: SwimLane[]
+  direction: CanvasDirection
+  lineStyle: LineStyle
   onChange: (map: ProcessMap) => void
+  onRelayout: (direction: CanvasDirection) => void
+  onLineStyleChange: (style: LineStyle) => void
 }
 
-function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes))
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges))
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
   const [draggingType, setDraggingType] = useState<{ type: ProcessNodeType; lane: SwimLane } | null>(null)
   const [editingNode, setEditingNode] = useState<Node | null>(null)
   const [showTimes, setShowTimes] = useState(false)
@@ -211,6 +215,11 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
       return () => clearTimeout(t)
     }
   }, [])
+
+  // Regenerate edge styles when lineStyle changes
+  useEffect(() => {
+    setRfEdges(toRfEdges(processMap.edges, lineStyle))
+  }, [lineStyle])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -339,6 +348,34 @@ function CanvasInner({ processMap, lanes, onChange }: CanvasInnerProps) {
             <Clock className="w-3 h-3" />
             {showTimes ? 'Hiding times' : 'Show times'}
           </button>
+
+          {/* Direction toggle */}
+          <button
+            onClick={() => onRelayout(direction === 'LR' ? 'TB' : 'LR')}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+            title={direction === 'LR' ? 'Switch to top-down layout' : 'Switch to left-right layout'}
+          >
+            {direction === 'LR' ? <ArrowRight className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+            {direction === 'LR' ? 'L→R' : 'T→B'}
+          </button>
+
+          {/* Line style toggle */}
+          <button
+            onClick={() => onLineStyleChange(lineStyle === 'default' ? 'step' : 'default')}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              lineStyle === 'step'
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+            )}
+            title={lineStyle === 'step' ? 'Switch to curved lines' : 'Switch to straight lines'}
+          >
+            <GitBranch className="w-3 h-3" />
+            {lineStyle === 'step' ? 'Straight' : 'Curved'}
+          </button>
         </div>
       </div>
 
@@ -406,10 +443,14 @@ interface ProcessCanvasProps {
   teamOwner: TeamOwner[]
   workato: boolean
   decagonL0: boolean
+  direction: CanvasDirection
+  lineStyle: LineStyle
   onChange: (map: ProcessMap) => void
+  onRelayout: (direction: CanvasDirection) => void
+  onLineStyleChange: (style: LineStyle) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, onChange }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, onChange, onRelayout, onLineStyleChange }: ProcessCanvasProps) {
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -431,7 +472,16 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
 
   return (
     <ReactFlowProvider>
-      <CanvasInner key={canvasKey} processMap={processMap} lanes={lanes} onChange={onChange} />
+      <CanvasInner
+        key={canvasKey}
+        processMap={processMap}
+        lanes={lanes}
+        direction={direction}
+        lineStyle={lineStyle}
+        onChange={onChange}
+        onRelayout={onRelayout}
+        onLineStyleChange={onLineStyleChange}
+      />
     </ReactFlowProvider>
   )
 }
