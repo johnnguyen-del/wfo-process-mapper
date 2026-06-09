@@ -115,6 +115,7 @@ export interface ProcessEntry {
   author?: string            // email — set on first save, never overwritten
   collaborators?: string[]   // all editors deduped
   editLog?: EditLogEntry[]   // newest first
+  deletedAt?: string         // ISO timestamp — set on soft delete, absent = active
   status: 'draft' | 'submitted'
 }
 
