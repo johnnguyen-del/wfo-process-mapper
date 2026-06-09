@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import type { ProcessMap, SwimLane } from '@/lib/types'
-import { CheckCircle, XCircle, MinusCircle } from 'lucide-react'
+import { CheckCircle, XCircle, MinusCircle, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface MapQualityChecklistProps {
@@ -50,30 +51,110 @@ export default function MapQualityChecklist({ processMap, activeLanes }: MapQual
   const applicable = criteria.filter((c) => !c.na)
   const metCount = applicable.filter((c) => c.met).length
 
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  async function fetchSuggestions() {
+    const stepLabels = nodes
+      .filter(n => n.type !== 'start' && n.type !== 'end')
+      .map(n => n.label)
+      .filter(Boolean)
+
+    if (stepLabels.length === 0) {
+      setSuggestions(['Add process step nodes to get suggestions.'])
+      setShowSuggestions(true)
+      return
+    }
+
+    setLoadingSuggestions(true)
+    setSuggestions([])
+    setShowSuggestions(true)
+
+    try {
+      const prompt = `You are reviewing a business process map. Here are the step labels:\n${stepLabels.map((l, i) => `${i + 1}. ${l}`).join('\n')}\n\nProvide 3-5 concrete suggestions to improve the clarity, brevity, or efficiency of this process map. Focus on:\n- Label wording (should be action-verb + subject, max 5 words)\n- Missing steps that are commonly needed\n- Redundant or combined steps\n\nReturn ONLY a JSON array of strings, no other text. Example: ["Suggestion 1", "Suggestion 2"]`
+
+      let buffer = ''
+      const stream = await (window as any).MagicAI?.stream({ prompt, maxTokens: 500 })
+      if (stream) {
+        for await (const chunk of stream) {
+          buffer += chunk
+        }
+      }
+
+      // Extract JSON array from response
+      const match = buffer.match(/\[[\s\S]*\]/)
+      if (match) {
+        const parsed = JSON.parse(match[0])
+        setSuggestions(Array.isArray(parsed) ? parsed : ['Could not parse suggestions.'])
+      } else {
+        setSuggestions(['Could not generate suggestions. Try again.'])
+      }
+    } catch {
+      setSuggestions(['AI suggestions unavailable. Check your connection.'])
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
   return (
-    <div className="border-t bg-muted/20 px-4 py-2 flex items-center gap-4 overflow-x-auto shrink-0">
-      <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-        Map quality: {metCount}/{applicable.length}
-      </span>
-      <div className="flex gap-3">
-        {criteria.map((c) => (
-          <div key={c.label} className="flex items-center gap-1 text-[11px] shrink-0">
-            {c.na ? (
-              <MinusCircle className="w-3 h-3 text-muted-foreground/40 shrink-0" />
-            ) : c.met ? (
-              <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
-            ) : (
-              <XCircle className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-            )}
-            <span className={cn(
-              c.na ? 'text-muted-foreground/50 line-through' :
-              c.met ? 'text-foreground' : 'text-muted-foreground'
-            )}>
-              {c.label}
-            </span>
-          </div>
-        ))}
+    <div className="border-t shrink-0">
+      {/* Existing checklist bar */}
+      <div className="bg-muted/20 px-4 py-2 flex items-center gap-4 overflow-x-auto">
+        <span className="text-[11px] font-medium text-muted-foreground shrink-0">
+          Map quality: {metCount}/{applicable.length}
+        </span>
+        <div className="flex gap-3 flex-1">
+          {criteria.map((c) => (
+            <div key={c.label} className="flex items-center gap-1 text-[11px] shrink-0">
+              {c.na ? (
+                <MinusCircle className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+              ) : c.met ? (
+                <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
+              ) : (
+                <XCircle className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+              )}
+              <span className={cn(
+                c.na ? 'text-muted-foreground/50 line-through' :
+                c.met ? 'text-foreground' : 'text-muted-foreground'
+              )}>
+                {c.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        {/* AI Suggestions button — right side */}
+        <button
+          onClick={loadingSuggestions ? undefined : (showSuggestions ? () => setShowSuggestions(false) : fetchSuggestions)}
+          disabled={loadingSuggestions}
+          className="flex items-center gap-1.5 text-[11px] text-violet-600 hover:text-violet-700 font-medium shrink-0 disabled:opacity-50"
+          title="Get AI optimization suggestions"
+        >
+          {loadingSuggestions
+            ? <Loader2 className="w-3 h-3 animate-spin" />
+            : <Sparkles className="w-3 h-3" />}
+          {loadingSuggestions ? 'Analyzing…' : showSuggestions ? 'Hide' : 'Suggestions'}
+        </button>
       </div>
+
+      {/* AI Suggestions panel */}
+      {showSuggestions && (
+        <div className="bg-violet-50 border-t border-violet-100 px-4 py-3">
+          <div className="text-[11px] font-semibold text-violet-700 mb-2">✦ AI Optimization Suggestions</div>
+          {loadingSuggestions ? (
+            <div className="text-[11px] text-violet-500">Analyzing your process map…</div>
+          ) : (
+            <ul className="space-y-1">
+              {suggestions.map((s, i) => (
+                <li key={i} className="flex gap-2 text-[11px] text-violet-800">
+                  <span className="text-violet-400 shrink-0">•</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   )
 }
