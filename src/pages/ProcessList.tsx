@@ -28,6 +28,9 @@ export default function ProcessList() {
   const [entries, setEntries] = useState<ProcessEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [owner] = useState(isOwner)
+  const [currentUserEmail] = useState<string>(() =>
+    (window as any).MagicAuth?.viewer?.()?.email ?? ''
+  )
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -192,6 +195,7 @@ export default function ProcessList() {
                       key={entry.id}
                       entry={entry}
                       owner={owner}
+                      currentUserEmail={currentUserEmail}
                       onDelete={handleDelete}
                       onDragStart={(e, id) => {
                         e.dataTransfer.setData('process-id', id)
@@ -244,11 +248,13 @@ function avatarInitials(email: string): string {
 function EntryRow({
   entry,
   owner,
+  currentUserEmail,
   onDelete,
   onDragStart,
 }: {
   entry: ProcessEntry
   owner: boolean
+  currentUserEmail: string
   onDelete: (e: ProcessEntry) => void
   onDragStart: (e: React.DragEvent, entryId: string) => void
 }) {
@@ -342,12 +348,13 @@ function EntryRow({
             <Edit className="w-3.5 h-3.5" />
           </Link>
         </Button>
-        {owner && (
+        {(owner || (currentUserEmail && entry.author === currentUserEmail)) && (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(entry)}
+            title="Delete process"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
