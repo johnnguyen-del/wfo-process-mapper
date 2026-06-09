@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Sparkles, FormInput, CheckCircle, ExternalLink } from 'lucide-react'
+import { Sparkles, FormInput, CheckCircle, ExternalLink, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import WizardShell from '@/components/wizard/WizardShell'
 import WorthMappingGate from '@/components/wizard/WorthMappingGate'
@@ -14,20 +14,66 @@ import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
-import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry } from '@/lib/types'
+import DetailsTab from '@/components/wizard/DetailsTab'
+import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry, type EditLogEntry } from '@/lib/types'
 import { generateId, loadEntry, saveEntry, loadFolders } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
 import { autoLayout } from '@/lib/export'
 import type { FormFillPatch } from '@/lib/ai'
 import { cn } from '@/lib/utils'
 
+const TRACKED_FIELDS: Record<string, string> = {
+  processName: 'Process Name',
+  domain: 'Domain',
+  description: 'Description',
+  teamOwner: 'Team Owner',
+  volumeTier: 'Volume Tier',
+  userTools: 'User Tools',
+  jiraBoards: 'JIRA Boards',
+  atlasCopilot: 'Automation',
+  decagonL0: 'Automation',
+  workato: 'Automation',
+  outboundComms: 'Outbound Comms',
+  spoofableRisk: 'Spoofable Risk',
+  opsDomains: 'Ops Domains',
+  cxTicketDriver: 'Ticket Driver',
+  processMap: 'Process Map',
+}
+
+function diffEntry(prev: ProcessEntry, next: ProcessEntry): string[] {
+  const changed = new Set<string>()
+  for (const [key, label] of Object.entries(TRACKED_FIELDS)) {
+    if (JSON.stringify((prev as any)[key]) !== JSON.stringify((next as any)[key])) {
+      changed.add(label)
+    }
+  }
+  return Array.from(changed)
+}
+
+function appendLog(
+  entry: ProcessEntry,
+  action: 'saved' | 'submitted',
+  by: string,
+  now: string,
+  prev: ProcessEntry | null
+): Partial<ProcessEntry> {
+  const changed = prev ? diffEntry(prev, entry) : []
+  const logEntry: EditLogEntry = { by, at: now, action, ...(changed.length > 0 ? { changed } : {}) }
+  return {
+    author: entry.author || by,
+    collaborators: Array.from(new Set([...(entry.collaborators ?? []), by])),
+    editLog: [logEntry, ...(entry.editLog ?? [])],
+  }
+}
+
 export default function ProcessBuilder() {
   const { id } = useParams<{ id?: string }>()
   const navigate = useNavigate()
   const [entry, setEntry] = useState<ProcessEntry>(() => emptyEntry(id ?? generateId()))
+  const lastSavedRef = useRef<ProcessEntry | null>(null)
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
-  const [leftTab, setLeftTab] = useState<'form' | 'ai'>('form')
+  const [leftTab, setLeftTab] = useState<'form' | 'ai' | 'details'>('form')
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [canvasDirection, setCanvasDirection] = useState<CanvasDirection>('LR')
   const [lineStyle, setLineStyle] = useState<LineStyle>('default')
@@ -53,7 +99,10 @@ export default function ProcessBuilder() {
   useEffect(() => {
     if (id) {
       loadEntry(id).then((loaded) => {
-        if (loaded) setEntry(loaded)
+        if (loaded) {
+          setEntry(loaded)
+          lastSavedRef.current = loaded
+        }
       })
     }
   }, [id])
@@ -75,14 +124,17 @@ export default function ProcessBuilder() {
 
   function handleSave() {
     const now = new Date().toISOString()
-    // Preserve existing status — don't downgrade 'submitted' to 'draft'
-    const saved = {
+    const by = (window as any).MagicAuth?.viewer?.()?.email ?? 'unknown'
+    const trackingPatch = appendLog(entry, 'saved', by, now, lastSavedRef.current)
+    const saved: ProcessEntry = {
       ...entry,
+      ...trackingPatch,
       lastReviewed: entry.lastReviewed || now.split('T')[0],
       status: entry.status === 'submitted' ? 'submitted' as const : 'draft' as const,
     }
     setEntry(saved)
     saveEntry(saved)
+    lastSavedRef.current = saved
     toast.success(entry.status === 'submitted' ? 'Changes saved' : 'Draft saved')
   }
 
@@ -91,10 +143,13 @@ export default function ProcessBuilder() {
     try {
       const now = new Date().toISOString()
       const viewer = (window as any).MagicAuth?.viewer?.()
+      const by = viewer?.email ?? entry.submittedBy ?? 'unknown'
+      const trackingPatch = appendLog(entry, 'submitted', by, now, lastSavedRef.current)
       const toolUrl = `${window.location.origin}${window.location.pathname}#/edit/${entry.id}`
       const submitted: ProcessEntry = {
         ...entry,
-        submittedBy: viewer?.email ?? entry.submittedBy ?? '',
+        ...trackingPatch,
+        submittedBy: by,
         submittedAt: now,
         lastReviewed: now.split('T')[0],
         status: 'submitted',
@@ -103,6 +158,7 @@ export default function ProcessBuilder() {
       const final = { ...submitted, notionPageUrl: notionUrl }
       setEntry(final)
       saveEntry(final)
+      lastSavedRef.current = final
       setSubmitSuccess(notionUrl)
     } catch (err: any) {
       console.error(err)
@@ -321,9 +377,23 @@ export default function ProcessBuilder() {
               <Sparkles className="w-3.5 h-3.5" />
               AI Fill
             </button>
+            <button
+              onClick={() => setLeftTab('details')}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors',
+                leftTab === 'details'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <History className="w-3.5 h-3.5" />
+              Details
+            </button>
           </div>
 
-          {leftTab === 'ai' ? (
+          {leftTab === 'details' ? (
+            <DetailsTab entry={entry} />
+          ) : leftTab === 'ai' ? (
             <AiChatPanel onApply={handleAiApply} />
           ) : (
             <>
