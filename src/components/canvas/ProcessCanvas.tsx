@@ -247,6 +247,13 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const idCounter = useRef(processMap.nodes.length + 1)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
+  // Refs always hold the latest rendered state — used to read fresh values
+  // inside setTimeout callbacks where the closure would otherwise be stale.
+  const rfNodesRef = useRef(rfNodes)
+  rfNodesRef.current = rfNodes
+  const rfEdgesRef = useRef(rfEdges)
+  rfEdgesRef.current = rfEdges
+
   function handleFullscreen() {
     const el = canvasContainerRef.current?.closest('.canvas-fullscreen-target') as HTMLElement | null
     if (!document.fullscreenElement) {
@@ -554,16 +561,20 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
-          onNodesChange={onNodesChange}
+          onNodesChange={(changes) => {
+            onNodesChange(changes)
+            // Detect drag end: a position change with dragging===false means the user
+            // just released the mouse. We defer the commit by one tick so React has
+            // time to flush the final position into state before we read via the ref.
+            if (!readOnly && changes.some(c => c.type === 'position' && !(c as any).dragging)) {
+              setTimeout(() => {
+                commit(fromRfNodes(rfNodesRef.current), fromRfEdges(rfEdgesRef.current))
+              }, 0)
+            }
+          }}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeDoubleClick={readOnly ? undefined : handleNodeDoubleClick}
-          onNodeDragStop={readOnly ? undefined : (_e, _node, nodes) => commit(fromRfNodes(nodes), fromRfEdges(rfEdges))}
-          onSelectionDragStop={readOnly ? undefined : (_e, nodes) => {
-            const updatedIds = new Set(nodes.map(n => n.id))
-            const merged = rfNodes.map(n => updatedIds.has(n.id) ? nodes.find(s => s.id === n.id)! : n)
-            commit(fromRfNodes(merged), fromRfEdges(rfEdges))
-          }}
           nodesDraggable={!readOnly}
           nodesConnectable={!readOnly}
           nodeTypes={NODE_TYPES}
