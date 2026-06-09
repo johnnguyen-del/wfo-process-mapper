@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Folder, FolderOpen, GripVertical, Plus, Trash2 } from 'lucide-react'
+import { Folder, FolderOpen, GripVertical, Plus, Trash2, Trash } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FolderEntry, ProcessEntry } from '@/lib/types'
 
@@ -12,6 +12,7 @@ interface FolderSidebarProps {
   onDeleteFolder: (id: string) => void
   onReorderFolders: (reordered: FolderEntry[]) => void
   onAssignProcess: (processId: string, folderId: string | null) => void
+  trashCount?: number
 }
 
 export default function FolderSidebar({
@@ -23,6 +24,7 @@ export default function FolderSidebar({
   onDeleteFolder,
   onReorderFolders,
   onAssignProcess,
+  trashCount = 0,
 }: FolderSidebarProps) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -174,6 +176,30 @@ export default function FolderSidebar({
           </div>
         )
       })}
+
+      {/* Trash */}
+      <div className="mt-2 pt-2 border-t">
+        <button
+          onClick={() => onSelect('__trash__')}
+          className={cn(
+            'flex items-center gap-2 px-2 py-1.5 rounded text-xs w-full text-left transition-colors',
+            selectedFolderId === '__trash__'
+              ? 'bg-destructive/10 text-destructive font-medium'
+              : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+          )}
+        >
+          <Trash className="w-3.5 h-3.5 shrink-0" />
+          <span className="flex-1">Trash</span>
+          {trashCount > 0 && (
+            <span className={cn(
+              'text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0',
+              selectedFolderId === '__trash__' ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground'
+            )}>
+              {trashCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {creating ? (
         <div className="flex gap-1 mt-1">
