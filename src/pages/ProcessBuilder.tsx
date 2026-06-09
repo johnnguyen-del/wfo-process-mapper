@@ -33,6 +33,13 @@ export default function ProcessBuilder() {
   const [lineStyle, setLineStyle] = useState<LineStyle>('default')
   const [layoutKey, setLayoutKey] = useState(0)
   const [viewMode, setViewMode] = useState<ViewMode>('current')
+
+  const DEFAULT_LEFT_WIDTH = Math.max(280, Math.round(window.innerWidth * 0.4))
+
+  const [leftWidth, setLeftWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('wfo-layout-left')
+    return saved ? Number(saved) : DEFAULT_LEFT_WIDTH
+  })
   const [folders, setFolders] = useState<FolderEntry[]>([])
 
   useEffect(() => {
@@ -116,6 +123,32 @@ export default function ProcessBuilder() {
       return { ...prev, optimizationMap: { nodes: relaid, edges: prev.optimizationMap.edges } }
     })
     setLayoutKey(k => k + 1)
+  }
+
+  function handleLeftDragStart(e: React.MouseEvent) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = leftWidth
+
+    function onMove(ev: MouseEvent) {
+      const newWidth = Math.min(
+        Math.max(280, startWidth + (ev.clientX - startX)),
+        Math.round(window.innerWidth * 0.65)
+      )
+      setLeftWidth(newWidth)
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      setLeftWidth(prev => {
+        localStorage.setItem('wfo-layout-left', String(prev))
+        return prev
+      })
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
   }
 
   function renderStep() {
@@ -215,7 +248,10 @@ export default function ProcessBuilder() {
       {/* Main split */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Form / AI tabs */}
-        <div className="w-[40%] min-w-[320px] border-r flex flex-col overflow-hidden shrink-0">
+        <div
+          className="border-r flex flex-col overflow-hidden shrink-0"
+          style={{ width: leftWidth, minWidth: 280 }}
+        >
           {/* Tab bar — same pattern as PlaybookStudio's Visual/DSL/Chat tabs */}
           <div className="flex border-b shrink-0">
             <button
@@ -270,6 +306,15 @@ export default function ProcessBuilder() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Indigo drag handle — Form ↔ Canvas */}
+        <div
+          onMouseDown={handleLeftDragStart}
+          className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-indigo-400 transition-colors flex items-center justify-center group"
+          title="Drag to resize panels"
+        >
+          <div className="w-0.5 h-7 rounded-full bg-muted-foreground/30 group-hover:bg-white/70 transition-colors" />
         </div>
 
         {/* Right: Canvas — shows different canvas based on viewMode */}
