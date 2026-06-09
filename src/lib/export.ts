@@ -82,6 +82,7 @@ export function toYaml(entry: ProcessEntry): string {
         nodes: entry.processMap.nodes.map(n => ({
           id: n.id, type: n.type, label: n.label, lane: n.lane,
           ...(n.timeEstimate ? { time_estimate: n.timeEstimate } : {}),
+          ...(n.badge ? { badge: n.badge } : {}),
           position: n.position,
         })),
         edges: entry.processMap.edges.map(e => ({
@@ -112,6 +113,7 @@ export function fromYaml(
       label: n.label ?? '',
       lane: (n.lane ?? 'CS') as ProcessNode['lane'],
       timeEstimate: n.time_estimate ?? undefined,
+      badge: n.badge ?? undefined,
       position: { x: n.position?.x ?? 150 + i * 220, y: n.position?.y ?? 80 },
     }))
 

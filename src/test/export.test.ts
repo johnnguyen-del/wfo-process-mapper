@@ -21,11 +21,13 @@ describe('autoLayout direction', () => {
     const entry = fromYaml(YAML, 'LR')
     const nodes = entry!.processMap!.nodes
     expect(nodes[1].position.x).toBeGreaterThan(nodes[0].position.x)
+    expect(nodes[2].position.x).toBeGreaterThan(nodes[1].position.x)
   })
 
   it('TB layout places nodes top-to-bottom (y increases)', () => {
     const entry = fromYaml(YAML, 'TB')
     const nodes = entry!.processMap!.nodes
     expect(nodes[1].position.y).toBeGreaterThan(nodes[0].position.y)
+    expect(nodes[2].position.y).toBeGreaterThan(nodes[1].position.y)
   })
 })
