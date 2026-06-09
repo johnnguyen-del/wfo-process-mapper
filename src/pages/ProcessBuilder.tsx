@@ -41,6 +41,10 @@ export default function ProcessBuilder() {
     const saved = localStorage.getItem('wfo-layout-left')
     return saved ? Number(saved) : defaultLeftWidth
   })
+  const [compareSplit, setCompareSplit] = useState<number>(() => {
+    const saved = localStorage.getItem('wfo-layout-compare')
+    return saved ? Number(saved) : 50
+  })
   const leftDragCleanupRef = useRef<(() => void) | null>(null)
   const [folders, setFolders] = useState<FolderEntry[]>([])
 
@@ -165,6 +169,11 @@ export default function ProcessBuilder() {
       document.removeEventListener('mouseup', onUp)
       document.body.style.cursor = ''
     }
+  }
+
+  function handleCompareSplitChange(pct: number) {
+    setCompareSplit(pct)
+    localStorage.setItem('wfo-layout-compare', String(pct))
   }
 
   function renderStep() {
@@ -395,6 +404,8 @@ export default function ProcessBuilder() {
                 teamOwner={entry.teamOwner}
                 workato={entry.workato}
                 decagonL0={entry.decagonL0}
+                compareSplit={compareSplit}
+                onCompareSplitChange={handleCompareSplitChange}
               />
             )}
           </div>

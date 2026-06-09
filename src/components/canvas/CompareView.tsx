@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import ProcessCanvas from './ProcessCanvas'
 import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner } from '@/lib/types'
 
@@ -9,6 +10,8 @@ interface CompareViewProps {
   teamOwner: TeamOwner[]
   workato: boolean
   decagonL0: boolean
+  compareSplit: number                         // 20–80, percentage of container width
+  onCompareSplitChange: (pct: number) => void
 }
 
 export default function CompareView({
@@ -19,13 +22,58 @@ export default function CompareView({
   teamOwner,
   workato,
   decagonL0,
+  compareSplit,
+  onCompareSplitChange,
 }: CompareViewProps) {
   const noOp = () => {}
+  const containerRef = useRef<HTMLDivElement>(null)
+  const splitDragCleanupRef = useRef<(() => void) | null>(null)
+
+  function handleSplitDragStart(e: React.MouseEvent) {
+    e.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+    const containerWidth = container.getBoundingClientRect().width
+    const startX = e.clientX
+    const startPct = compareSplit
+    document.body.style.cursor = 'col-resize'
+
+    function onMove(ev: MouseEvent) {
+      const deltaPct = ((ev.clientX - startX) / containerWidth) * 100
+      onCompareSplitChange(Math.min(80, Math.max(20, startPct + deltaPct)))
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      splitDragCleanupRef.current = null
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+
+    splitDragCleanupRef.current = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      splitDragCleanupRef.current?.()
+    }
+  }, [])
 
   return (
-    <div className="flex h-full">
+    <div ref={containerRef} className="flex h-full">
       {/* Left: Current Flow */}
-      <div className="flex-1 flex flex-col border-r overflow-hidden">
+      <div
+        className="flex flex-col overflow-hidden"
+        style={{ width: `${compareSplit}%` }}
+      >
         <div className="px-3 py-1.5 bg-muted/30 border-b text-xs font-semibold text-muted-foreground shrink-0">
           Current Flow
         </div>
@@ -45,8 +93,17 @@ export default function CompareView({
         </div>
       </div>
 
+      {/* Violet drag handle — Current ↔ Ideal */}
+      <div
+        onMouseDown={handleSplitDragStart}
+        className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-violet-400 transition-colors flex items-center justify-center group"
+        title="Drag to resize"
+      >
+        <div className="w-0.5 h-7 rounded-full bg-muted-foreground/30 group-hover:bg-white/70 transition-colors" />
+      </div>
+
       {/* Right: Ideal Flow */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col overflow-hidden flex-1">
         <div className="px-3 py-1.5 bg-violet-50 border-b text-xs font-semibold text-violet-700 shrink-0">
           ✦ Ideal Flow
         </div>
