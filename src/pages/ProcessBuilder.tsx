@@ -158,6 +158,23 @@ export default function ProcessBuilder() {
           <span className="text-sm font-medium truncate max-w-[200px]">
             {entry.processName || 'New Process'}
           </span>
+          {/* Mode toggle */}
+          <div className="flex border rounded-md overflow-hidden">
+            {(['current', 'optimization', 'compare'] as ViewMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium transition-colors',
+                  viewMode === mode
+                    ? 'bg-foreground text-background'
+                    : 'bg-background text-muted-foreground hover:bg-muted/40'
+                )}
+              >
+                {mode === 'compare' ? '⟺ Compare' : mode === 'optimization' ? '✦ Ideal' : 'Current'}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleSave}>
@@ -226,23 +243,66 @@ export default function ProcessBuilder() {
           )}
         </div>
 
-        {/* Right: Canvas */}
+        {/* Right: Canvas — shows different canvas based on viewMode */}
         <div className="flex-1 flex flex-col overflow-hidden canvas-fullscreen-target">
           <div className="px-4 py-2 border-b text-xs text-muted-foreground shrink-0">
             Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove
           </div>
           <div className="flex-1 relative">
-            <ProcessCanvas
-              processMap={entry.processMap}
-              teamOwner={entry.teamOwner}
-              workato={entry.workato}
-              decagonL0={entry.decagonL0}
-              direction={canvasDirection}
-              lineStyle={lineStyle}
-              onChange={(map) => patch({ processMap: map })}
-              onRelayout={handleRelayout}
-              onLineStyleChange={setLineStyle}
-            />
+            {viewMode === 'current' && (
+              <ProcessCanvas
+                processMap={entry.processMap}
+                teamOwner={entry.teamOwner}
+                workato={entry.workato}
+                decagonL0={entry.decagonL0}
+                direction={canvasDirection}
+                lineStyle={lineStyle}
+                canvasLabel="Current Flow"
+                onChange={(map) => patch({ processMap: map })}
+                onRelayout={handleRelayout}
+                onLineStyleChange={setLineStyle}
+              />
+            )}
+            {viewMode === 'optimization' && (
+              <>
+                <ProcessCanvas
+                  processMap={entry.optimizationMap ?? { nodes: [], edges: [] }}
+                  teamOwner={entry.teamOwner}
+                  workato={entry.workato}
+                  decagonL0={entry.decagonL0}
+                  direction={canvasDirection}
+                  lineStyle={lineStyle}
+                  canvasLabel="Ideal Flow"
+                  onChange={(map) => patch({ optimizationMap: map })}
+                  onRelayout={(direction) => {
+                    setCanvasDirection(direction)
+                    if (entry.optimizationMap) {
+                      const relaid = autoLayout(entry.optimizationMap.nodes, entry.optimizationMap.edges, direction)
+                      patch({ optimizationMap: { nodes: relaid, edges: entry.optimizationMap.edges } })
+                    }
+                  }}
+                  onLineStyleChange={setLineStyle}
+                />
+                {!entry.optimizationMap?.nodes?.length && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <div className="bg-background border rounded-lg p-4 text-center shadow-lg pointer-events-auto">
+                      <p className="text-sm text-muted-foreground mb-3">Start with a blank canvas or clone from current</p>
+                      <button
+                        onClick={() => patch({ optimizationMap: structuredClone(entry.processMap) })}
+                        className="px-4 py-2 bg-foreground text-background rounded text-xs font-medium"
+                      >
+                        Clone Current Flow
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {viewMode === 'compare' && (
+              <div className="flex-1 flex items-center justify-center h-full text-sm text-muted-foreground">
+                Compare view — coming in Task 3.3
+              </div>
+            )}
           </div>
         </div>
       </div>

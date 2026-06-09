@@ -200,12 +200,14 @@ interface CanvasInnerProps {
   lanes: SwimLane[]
   direction: CanvasDirection
   lineStyle: LineStyle
+  canvasLabel?: string
+  readOnly?: boolean
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -355,8 +357,13 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
     <div className="flex flex-col h-full" ref={canvasContainerRef}>
       {/* Canvas toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/20 shrink-0 gap-2">
-        {/* Lane legend */}
+        {/* Lane legend + optional label chip */}
         <div className="flex items-center gap-2 flex-wrap">
+          {canvasLabel && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-100 text-violet-700 border border-violet-200">
+              {canvasLabel}
+            </span>
+          )}
           {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
             <span key={lane} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: LANE_LABEL_COLORS[lane] }}>
               <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane], border: `1.5px solid ${LANE_LABEL_COLORS[lane]}` }} />
@@ -470,7 +477,9 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeDoubleClick={handleNodeDoubleClick}
+          onNodeDoubleClick={readOnly ? undefined : handleNodeDoubleClick}
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
           nodeTypes={NODE_TYPES}
           minZoom={0.2}
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
@@ -510,12 +519,14 @@ interface ProcessCanvasProps {
   decagonL0: boolean
   direction: CanvasDirection
   lineStyle: LineStyle
+  canvasLabel?: string
+  readOnly?: boolean
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, onChange, onRelayout, onLineStyleChange }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange }: ProcessCanvasProps) {
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -543,6 +554,8 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         lanes={lanes}
         direction={direction}
         lineStyle={lineStyle}
+        canvasLabel={canvasLabel}
+        readOnly={readOnly}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
