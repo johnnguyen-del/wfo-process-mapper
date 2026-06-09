@@ -7,6 +7,7 @@ import {
   Background,
   Controls,
   addEdge,
+  applyNodeChanges,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -15,6 +16,7 @@ import {
   Position,
   type Node,
   type Edge,
+  type NodeChange,
   type Connection,
   type OnConnect,
 } from '@xyflow/react'
@@ -561,15 +563,15 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
-          onNodesChange={(changes) => {
+          onNodesChange={(changes: NodeChange[]) => {
             onNodesChange(changes)
-            // Detect drag end: a position change with dragging===false means the user
-            // just released the mouse. We defer the commit by one tick so React has
-            // time to flush the final position into state before we read via the ref.
+            // When a drag ends (position change with dragging===false), commit positions.
+            // We use applyNodeChanges() to compute the final node positions synchronously
+            // from the pending changes — this avoids stale-ref and setTimeout timing bugs
+            // where rfNodesRef.current might not yet reflect the final drag position.
             if (!readOnly && changes.some(c => c.type === 'position' && !(c as any).dragging)) {
-              setTimeout(() => {
-                commit(fromRfNodes(rfNodesRef.current), fromRfEdges(rfEdgesRef.current))
-              }, 0)
+              const updatedNodes = applyNodeChanges(changes, rfNodesRef.current)
+              commit(fromRfNodes(updatedNodes), fromRfEdges(rfEdgesRef.current))
             }
           }}
           onEdgesChange={onEdgesChange}
