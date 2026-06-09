@@ -558,6 +558,12 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeDoubleClick={readOnly ? undefined : handleNodeDoubleClick}
+          onNodeDragStop={readOnly ? undefined : (_e, _node, nodes) => commit(fromRfNodes(nodes), fromRfEdges(rfEdges))}
+          onSelectionDragStop={readOnly ? undefined : (_e, nodes) => {
+            const updatedIds = new Set(nodes.map(n => n.id))
+            const merged = rfNodes.map(n => updatedIds.has(n.id) ? nodes.find(s => s.id === n.id)! : n)
+            commit(fromRfNodes(merged), fromRfEdges(rfEdges))
+          }}
           nodesDraggable={!readOnly}
           nodesConnectable={!readOnly}
           nodeTypes={NODE_TYPES}
