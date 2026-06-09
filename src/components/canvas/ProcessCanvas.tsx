@@ -389,11 +389,11 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, showTimes: next } })))
   }
 
-  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[]) {
+  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string) {
     setRfNodes((prev) => {
       const updated = prev.map((n) =>
         n.id === id
-          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments } }
+          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments, nodeColor } }
           : n
       )
       commit(updated, rfEdges)
@@ -583,7 +583,9 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
       {editingNode && (
         <NodeEditDialog
           node={editingNode}
-          onSave={(id, label, time, lane, badge, durationMinutes, attachments) => handleEditSave(id, label, time, lane, badge, durationMinutes, attachments)}
+          onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor) =>
+            handleEditSave(id, label, time, lane, badge, durationMinutes, attachments, nodeColor)
+          }
           onDelete={() => { handleNodeDelete(editingNode.id); setEditingNode(null) }}
           onClose={() => setEditingNode(null)}
         />
