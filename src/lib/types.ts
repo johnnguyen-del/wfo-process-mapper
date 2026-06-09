@@ -15,6 +15,7 @@ export interface ProcessNode {
   label: string
   lane: SwimLane
   timeEstimate?: string
+  durationMinutes?: number
   position: { x: number; y: number }
   badge?: {
     status?: 'active' | 'review' | 'deprecated'
