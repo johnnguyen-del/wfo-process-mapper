@@ -60,6 +60,8 @@ export const LANE_LABEL_COLORS: Record<SwimLane, string> = {
 
 const ALL_LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
 
+const EDGE_MARKER = { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 }
+
 function toRfNodes(nodes: ProcessNode[]): Node[] {
   return nodes.map((n) => ({
     id: n.id,
