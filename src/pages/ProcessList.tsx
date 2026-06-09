@@ -83,11 +83,27 @@ export default function ProcessList() {
     if (selectedFolderId === id) setSelectedFolderId(null)
   }
 
-  async function handleDelete(entry: ProcessEntry) {
-    if (!window.confirm(`Delete "${entry.processName}"? This cannot be undone.`)) return
+  // Soft delete — moves to trash
+  function handleDelete(entry: ProcessEntry) {
+    if (!window.confirm(`Move "${entry.processName}" to Trash?`)) return
+    const trashed = { ...entry, deletedAt: new Date().toISOString() }
+    saveEntry(trashed)
+    setEntries(prev => prev.map(e => e.id === entry.id ? trashed : e))
+    toast.success(`"${entry.processName}" moved to Trash`)
+  }
+
+  // Restore from trash
+  function handleRestore(entry: ProcessEntry) {
+    const restored = { ...entry, deletedAt: undefined }
+    saveEntry(restored)
+    setEntries(prev => prev.map(e => e.id === entry.id ? restored : e))
+    toast.success(`"${entry.processName}" restored`)
+  }
+
+  // Permanent delete from trash
+  async function handlePermanentDelete(entry: ProcessEntry) {
+    if (!window.confirm(`Permanently delete "${entry.processName}"? This cannot be undone.`)) return
     try {
-      // Mark as deleted by saving with a sentinel — storage.ts doesn't have delete yet
-      // so we filter it out by saving with a special flag
       const scope = (window as any).MagicStorage?.public ?? null
       if (scope?.delete) {
         await scope.delete(`processes/${entry.id}`)
@@ -95,15 +111,21 @@ export default function ProcessList() {
         window.localStorage.removeItem(`wfo-process-mapper:processes/${entry.id}`)
       }
       setEntries(prev => prev.filter(e => e.id !== entry.id))
-      toast.success(`"${entry.processName}" deleted`)
+      toast.success(`"${entry.processName}" permanently deleted`)
     } catch {
       toast.error('Delete failed')
     }
   }
 
-  const folderFiltered = selectedFolderId
-    ? entries.filter(e => e.folderId === selectedFolderId)
-    : entries
+  const activeEntries = entries.filter(e => !e.deletedAt)
+  const trashedEntries = entries.filter(e => !!e.deletedAt)
+  const isTrashView = selectedFolderId === '__trash__'
+
+  const folderFiltered = isTrashView
+    ? trashedEntries
+    : selectedFolderId
+    ? activeEntries.filter(e => e.folderId === selectedFolderId)
+    : activeEntries
 
   const visibleEntries = query.trim()
     ? folderFiltered.filter(e =>
@@ -129,6 +151,7 @@ export default function ProcessList() {
         onDeleteFolder={handleDeleteFolder}
         onReorderFolders={handleReorderFolders}
         onAssignProcess={handleAssignProcess}
+        trashCount={trashedEntries.length}
       />
       <div className="flex-1 p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -179,8 +202,29 @@ export default function ProcessList() {
         <div className="text-muted-foreground text-sm py-12 text-center">Loading…</div>
       ) : visibleEntries.length === 0 ? (
         <div className="text-muted-foreground text-sm py-16 text-center border rounded-lg">
-          {selectedFolderId ? 'No processes in this folder.' : <>No processes captured yet.{' '}<Link to="/new" className="underline hover:text-foreground">Start with + New Process</Link></>}
+          {isTrashView ? 'Trash is empty.' : selectedFolderId ? 'No processes in this folder.' : <>No processes captured yet.{' '}<Link to="/new" className="underline hover:text-foreground">Start with + New Process</Link></>}
         </div>
+      ) : isTrashView ? (
+        <section>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
+            Trash
+            <span className="text-[10px] font-normal normal-case text-muted-foreground">Restore or permanently delete</span>
+          </h2>
+          <div className="border rounded-lg divide-y">
+            {visibleEntries.map((entry) => (
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                owner={owner}
+                currentUserEmail={currentUserEmail}
+                isTrash
+                onDelete={handlePermanentDelete}
+                onRestore={handleRestore}
+                onDragStart={() => {}}
+              />
+            ))}
+          </div>
+        </section>
       ) : (
         <div className="space-y-8">
           {domains.map((domain) => {
@@ -249,13 +293,17 @@ function EntryRow({
   entry,
   owner,
   currentUserEmail,
+  isTrash = false,
   onDelete,
+  onRestore,
   onDragStart,
 }: {
   entry: ProcessEntry
   owner: boolean
   currentUserEmail: string
+  isTrash?: boolean
   onDelete: (e: ProcessEntry) => void
+  onRestore?: (e: ProcessEntry) => void
   onDragStart: (e: React.DragEvent, entryId: string) => void
 }) {
   return (
@@ -348,13 +396,28 @@ function EntryRow({
             <Edit className="w-3.5 h-3.5" />
           </Link>
         </Button>
-        {(owner || (currentUserEmail && entry.author === currentUserEmail)) && (
+        {isTrash ? (
+          <>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onRestore?.(entry)}>
+              Restore
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => onDelete(entry)}
+              title="Permanently delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        ) : (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(entry)}
-            title="Delete process"
+            title="Move to Trash"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
