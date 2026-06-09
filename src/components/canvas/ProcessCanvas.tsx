@@ -26,6 +26,8 @@ import DecisionNode from './node-types/DecisionNode'
 import AutomationNode from './node-types/AutomationNode'
 import CommsNode from './node-types/CommsNode'
 import StartEndNode from './node-types/StartEndNode'
+import SwimlaneNode from './node-types/SwimlaneNode'
+import StickyNode from './node-types/StickyNode'
 import NodePalette from './NodePalette'
 import MapQualityChecklist from './MapQualityChecklist'
 import NodeEditDialog from './NodeEditDialog'
@@ -39,6 +41,8 @@ const NODE_TYPES = {
   comms: CommsNode,
   start: StartEndNode,
   end: StartEndNode,
+  swimlane: SwimlaneNode,
+  sticky: StickyNode,
 }
 
 export const LANE_HEIGHT = 200
@@ -74,7 +78,20 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
     position: n.position,
     sourcePosition: sourcePos,
     targetPosition: targetPos,
-    data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type, badge: n.badge, durationMinutes: n.durationMinutes, attachments: n.attachments },
+    zIndex: n.type === 'sticky' ? 10 : n.type === 'swimlane' ? -1 : 0,
+    style: n.type === 'swimlane'
+      ? { width: n.nodeWidth ?? 400, height: n.nodeHeight ?? 200 }
+      : undefined,
+    data: {
+      label: n.label,
+      lane: n.lane,
+      timeEstimate: n.timeEstimate,
+      type: n.type,
+      badge: n.badge,
+      durationMinutes: n.durationMinutes,
+      attachments: n.attachments,
+      nodeColor: n.nodeColor,
+    },
   }))
 }
 
@@ -116,6 +133,9 @@ function fromRfNodes(rfNodes: Node[]): ProcessNode[] {
       badge: (n.data as any).badge,
       durationMinutes: (n.data as any).durationMinutes,
       attachments: (n.data as any).attachments,
+      nodeColor: (n.data as any).nodeColor,
+      nodeWidth: n.type === 'swimlane' && n.measured?.width ? Math.round(n.measured.width) : undefined,
+      nodeHeight: n.type === 'swimlane' && n.measured?.height ? Math.round(n.measured.height) : undefined,
       position: n.position,
     }))
 }
@@ -300,22 +320,29 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     e.preventDefault()
     if (readOnly || !draggingType) return
 
-    // Use screenToFlowPosition so drop works correctly at any zoom/pan
     const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    const lane = laneYFromFlowY(flowPos.y, lanes)
-    const snappedY = laneYCenter(lanes, lane)
+    const isAnnotation = draggingType.type === 'swimlane' || draggingType.type === 'sticky'
+    const lane = isAnnotation ? (draggingType.lane as SwimLane) : laneYFromFlowY(flowPos.y, lanes)
+    const yPos = isAnnotation ? flowPos.y : laneYCenter(lanes, lane)
+
+    const baseStyle = highlightedNodes.size > 0 ? { opacity: 0.2 as number } : {}
+    const nodeStyle = draggingType.type === 'swimlane'
+      ? { ...baseStyle, width: 400, height: 200 }
+      : Object.keys(baseStyle).length > 0 ? baseStyle : undefined
 
     const newNode: Node = {
       id: `n${idCounter.current++}`,
       type: draggingType.type,
-      position: { x: Math.max(50, flowPos.x), y: snappedY },
+      position: { x: Math.max(50, flowPos.x), y: yPos },
+      zIndex: draggingType.type === 'sticky' ? 10 : draggingType.type === 'swimlane' ? -1 : 0,
+      style: nodeStyle,
       data: {
-        label: draggingType.type.charAt(0).toUpperCase() + draggingType.type.slice(1),
+        label: draggingType.type === 'swimlane' ? 'Lane' : draggingType.type === 'sticky' ? 'Note' : draggingType.type.charAt(0).toUpperCase() + draggingType.type.slice(1),
         lane,
         type: draggingType.type,
         showTimes,
+        nodeColor: draggingType.type === 'swimlane' ? '#dbeafe' : draggingType.type === 'sticky' ? '#fef9c3' : undefined,
       },
-      style: highlightedNodes.size > 0 ? { opacity: 0.2 } : undefined,
     }
     setRfNodes((prev) => {
       const updated = [...prev, newNode]

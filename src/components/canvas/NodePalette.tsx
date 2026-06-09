@@ -1,5 +1,5 @@
 import type { ProcessNodeType, SwimLane } from '@/lib/types'
-import { Settings, Mail, GitBranch, Play, Square } from 'lucide-react'
+import { Settings, Mail, GitBranch, Play, Square, Layers, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface PaletteItem {
@@ -17,6 +17,8 @@ export const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'automation', label: 'Automation', defaultLane: 'Automation', icon: <Settings className="w-3 h-3" />, colorClass: 'border-gray-400 text-gray-800 bg-gray-50' },
   { type: 'comms', label: 'Comms', defaultLane: 'Client', icon: <Mail className="w-3 h-3" />, colorClass: 'border-indigo-300 text-indigo-800 bg-indigo-50' },
   { type: 'end', label: 'End', defaultLane: 'CS', icon: <Square className="w-3 h-3" />, colorClass: 'border-red-400 text-red-800 bg-red-50' },
+  { type: 'swimlane', label: 'Lane', defaultLane: 'CS', icon: <Layers className="w-3 h-3" />, colorClass: 'border-blue-300 text-blue-800 bg-blue-50' },
+  { type: 'sticky', label: 'Sticky', defaultLane: 'CS', icon: <StickyNote className="w-3 h-3" />, colorClass: 'border-yellow-300 text-yellow-800 bg-yellow-50' },
 ]
 
 interface NodePaletteProps {
