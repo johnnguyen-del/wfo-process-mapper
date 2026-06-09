@@ -9,6 +9,20 @@ export type OpsDomain = 'C&B' | 'I&O' | 'I&C' | 'C&D'
 export type ProcessNodeType = 'start' | 'end' | 'step' | 'decision' | 'automation' | 'comms'
 export type SwimLane = 'CS' | 'Ops' | 'Fraud Ops' | 'L2 - Risk' | 'Automation' | 'Client'
 
+export interface KbLink {
+  id: string               // use crypto.randomUUID() when creating
+  type: 'guru' | 'notion' | 'gdoc' | 'custom'
+  url: string
+  title?: string
+}
+
+export interface FolderEntry {
+  id: string
+  name: string
+  parentId?: string        // undefined = root folder
+  createdAt: string
+}
+
 export interface ProcessNode {
   id: string
   type: ProcessNodeType
@@ -22,6 +36,7 @@ export interface ProcessNode {
     priority?: 'high' | 'medium' | 'low'
     ownerNote?: string
   }
+  attachments?: KbLink[]
 }
 
 export interface ProcessEdge {
@@ -78,6 +93,11 @@ export interface ProcessEntry {
   processMap: ProcessMap
   optimizationMap?: ProcessMap   // stores the "ideal flow" canvas for Mirror Mode
 
+  // Integrations & Organization
+  sourceUrl?: string         // "Blowout Link" — original process source
+  kbLinks?: KbLink[]         // process-level knowledge base links
+  folderId?: string          // organizational folder ID
+
   // Meta
   submittedBy: string
   submittedAt: string
@@ -110,7 +130,10 @@ export function emptyEntry(id: string): ProcessEntry {
     docReview: false,
     otherMetrics: '',
     processMap: { nodes: [], edges: [] },
-    optimizationMap: undefined,   // new
+    optimizationMap: undefined,
+    sourceUrl: undefined,
+    kbLinks: undefined,
+    folderId: undefined,
     submittedBy: '',
     submittedAt: '',
     notionPageUrl: null,
