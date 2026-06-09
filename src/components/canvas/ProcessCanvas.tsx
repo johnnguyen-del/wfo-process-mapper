@@ -279,7 +279,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
-    if (!draggingType) return
+    if (readOnly || !draggingType) return
 
     // Use screenToFlowPosition so drop works correctly at any zoom/pan
     const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
@@ -483,11 +483,11 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           nodeTypes={NODE_TYPES}
           minZoom={0.2}
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
-          deleteKeyCode="Delete"
+          deleteKeyCode={readOnly ? null : 'Delete'}
           multiSelectionKeyCode="Shift"
           selectionOnDrag
           panOnDrag={[1, 2]}
-          onNodesDelete={(deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
+          onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
           style={{ background: 'transparent' }}
         >
           {/* SwimlaneOverlay removed — free layout with color-coded nodes instead */}
@@ -495,7 +495,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           <Controls />
         </ReactFlow>
 
-        <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />
+        {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
       </div>
 
       <MapQualityChecklist processMap={processMap} activeLanes={lanes} />

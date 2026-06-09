@@ -102,6 +102,15 @@ export default function ProcessBuilder() {
     patch({ processMap: { nodes: relaidNodes, edges: entry.processMap.edges } })
   }
 
+  function handleOptimizationRelayout(direction: CanvasDirection) {
+    setCanvasDirection(direction)
+    setEntry(prev => {
+      if (!prev.optimizationMap) return prev
+      const relaid = autoLayout(prev.optimizationMap.nodes, prev.optimizationMap.edges, direction)
+      return { ...prev, optimizationMap: { nodes: relaid, edges: prev.optimizationMap.edges } }
+    })
+  }
+
   function renderStep() {
     switch (step) {
       case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/')} />
@@ -246,7 +255,9 @@ export default function ProcessBuilder() {
         {/* Right: Canvas — shows different canvas based on viewMode */}
         <div className="flex-1 flex flex-col overflow-hidden canvas-fullscreen-target">
           <div className="px-4 py-2 border-b text-xs text-muted-foreground shrink-0">
-            Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove
+            {viewMode === 'compare'
+              ? 'Compare view — Current Flow vs. Ideal Flow (read-only)'
+              : 'Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove'}
           </div>
           <div className="flex-1 relative">
             {viewMode === 'current' && (
@@ -274,16 +285,10 @@ export default function ProcessBuilder() {
                   lineStyle={lineStyle}
                   canvasLabel="Ideal Flow"
                   onChange={(map) => patch({ optimizationMap: map })}
-                  onRelayout={(direction) => {
-                    setCanvasDirection(direction)
-                    if (entry.optimizationMap) {
-                      const relaid = autoLayout(entry.optimizationMap.nodes, entry.optimizationMap.edges, direction)
-                      patch({ optimizationMap: { nodes: relaid, edges: entry.optimizationMap.edges } })
-                    }
-                  }}
+                  onRelayout={handleOptimizationRelayout}
                   onLineStyleChange={setLineStyle}
                 />
-                {!entry.optimizationMap?.nodes?.length && (
+                {entry.optimizationMap === undefined && (
                   <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                     <div className="bg-background border rounded-lg p-4 text-center shadow-lg pointer-events-auto">
                       <p className="text-sm text-muted-foreground mb-3">Start with a blank canvas or clone from current</p>
