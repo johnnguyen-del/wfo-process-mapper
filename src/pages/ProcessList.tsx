@@ -229,6 +229,18 @@ export default function ProcessList() {
   )
 }
 
+function avatarColor(email: string): string {
+  let hash = 0
+  for (let i = 0; i < email.length; i++) hash = email.charCodeAt(i) + ((hash << 5) - hash)
+  const colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16']
+  return colors[Math.abs(hash) % colors.length]
+}
+
+function avatarInitials(email: string): string {
+  const name = email.split('@')[0] ?? email
+  return name.slice(0, 2).toUpperCase()
+}
+
 function EntryRow({
   entry,
   owner,
@@ -268,6 +280,45 @@ function EntryRow({
             </span>
           )}
         </div>
+        {/* Author + collaborators */}
+        {(entry.author || (entry.collaborators?.length ?? 0) > 0) && (() => {
+          const people = Array.from(
+            new Set([entry.author, ...(entry.collaborators ?? [])].filter(Boolean) as string[])
+          )
+          const visible = people.slice(0, 4)
+          const overflow = people.length - visible.length
+          return (
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex -space-x-1">
+                {visible.map(email => (
+                  <div
+                    key={email}
+                    title={email}
+                    style={{
+                      width: 16, height: 16,
+                      borderRadius: '50%',
+                      backgroundColor: avatarColor(email),
+                      border: '1.5px solid white',
+                      fontSize: 7, fontWeight: 700, color: 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {avatarInitials(email)}
+                  </div>
+                ))}
+                {overflow > 0 && (
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: '#94a3b8', border: '1.5px solid white', fontSize: 7, fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    +{overflow}
+                  </div>
+                )}
+              </div>
+              {entry.author && (
+                <span className="text-[10px] text-muted-foreground">{entry.author.split('@')[0]}</span>
+              )}
+            </div>
+          )
+        })()}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {entry.volumeTier && (
