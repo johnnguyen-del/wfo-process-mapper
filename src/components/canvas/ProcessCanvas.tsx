@@ -207,6 +207,7 @@ interface CanvasInnerProps {
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
+  layoutKey?: number
 }
 
 function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
@@ -563,9 +564,10 @@ interface ProcessCanvasProps {
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
+  layoutKey?: number
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey }: ProcessCanvasProps) {
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -583,7 +585,7 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
       })()
 
   // Re-mount canvas when nodes are replaced externally (e.g. paste from AI)
-  const canvasKey = `canvas-${processMap.nodes.length}-${processMap.nodes.map(n => n.id).join(',')}`
+  const canvasKey = `canvas-${processMap.nodes.length}-${processMap.nodes.map(n => n.id).join(',')}-${layoutKey ?? 0}`
 
   return (
     <ReactFlowProvider>
@@ -598,6 +600,7 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
+        layoutKey={layoutKey}
       />
     </ReactFlowProvider>
   )

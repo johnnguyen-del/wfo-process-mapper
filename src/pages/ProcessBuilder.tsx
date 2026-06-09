@@ -31,6 +31,7 @@ export default function ProcessBuilder() {
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [canvasDirection, setCanvasDirection] = useState<CanvasDirection>('LR')
   const [lineStyle, setLineStyle] = useState<LineStyle>('default')
+  const [layoutKey, setLayoutKey] = useState(0)
   const [viewMode, setViewMode] = useState<ViewMode>('current')
   const [folders, setFolders] = useState<FolderEntry[]>([])
 
@@ -104,6 +105,7 @@ export default function ProcessBuilder() {
     setCanvasDirection(direction)
     const relaidNodes = autoLayout(entry.processMap.nodes, entry.processMap.edges, direction)
     patch({ processMap: { nodes: relaidNodes, edges: entry.processMap.edges } })
+    setLayoutKey(k => k + 1)
   }
 
   function handleOptimizationRelayout(direction: CanvasDirection) {
@@ -113,6 +115,7 @@ export default function ProcessBuilder() {
       const relaid = autoLayout(prev.optimizationMap.nodes, prev.optimizationMap.edges, direction)
       return { ...prev, optimizationMap: { nodes: relaid, edges: prev.optimizationMap.edges } }
     })
+    setLayoutKey(k => k + 1)
   }
 
   function renderStep() {
@@ -289,6 +292,7 @@ export default function ProcessBuilder() {
                 onChange={(map) => patch({ processMap: map })}
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}
+                layoutKey={layoutKey}
               />
             )}
             {viewMode === 'optimization' && (
@@ -304,6 +308,7 @@ export default function ProcessBuilder() {
                   onChange={(map) => patch({ optimizationMap: map })}
                   onRelayout={handleOptimizationRelayout}
                   onLineStyleChange={setLineStyle}
+                  layoutKey={layoutKey}
                 />
                 {entry.optimizationMap === undefined && (
                   <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
