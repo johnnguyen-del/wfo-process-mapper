@@ -13,7 +13,7 @@ const LANE_COLORS: Record<string, string> = {
 
 interface NodeEditDialogProps {
   node: Node
-  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane) => void
+  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: { status?: string; priority?: string }) => void
   onDelete: () => void
   onClose: () => void
 }
@@ -22,6 +22,8 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
   const [label, setLabel] = useState((node.data as any).label ?? '')
   const [timeEstimate, setTimeEstimate] = useState((node.data as any).timeEstimate ?? '')
   const [lane, setLane] = useState<SwimLane>((node.data as any).lane ?? 'CS')
+  const [badgeStatus, setBadgeStatus] = useState<string>((node.data as any).badge?.status ?? '')
+  const [badgePriority, setBadgePriority] = useState<string>((node.data as any).badge?.priority ?? '')
 
   const isStartEnd = node.type === 'start' || node.type === 'end'
 
@@ -76,6 +78,37 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
             placeholder="e.g. 2–5 min"
           />
         </div>
+
+        {!isStartEnd && (
+          <>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Status badge</label>
+              <select
+                value={badgeStatus}
+                onChange={e => setBadgeStatus(e.target.value)}
+                className="w-full border rounded px-2 py-1.5 text-xs bg-background"
+              >
+                <option value="">None</option>
+                <option value="active">Active</option>
+                <option value="review">Needs Review</option>
+                <option value="deprecated">Deprecated</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Priority</label>
+              <select
+                value={badgePriority}
+                onChange={e => setBadgePriority(e.target.value)}
+                className="w-full border rounded px-2 py-1.5 text-xs bg-background"
+              >
+                <option value="">None</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex gap-2 mt-4">
@@ -83,7 +116,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane)} className="flex-1">
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined })} className="flex-1">
           Save
         </Button>
       </div>
