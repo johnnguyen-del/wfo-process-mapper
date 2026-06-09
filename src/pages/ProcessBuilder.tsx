@@ -178,6 +178,13 @@ export default function ProcessBuilder() {
     if (persist) localStorage.setItem('wfo-layout-compare', String(pct))
   }
 
+  function handleResetLayout() {
+    setLeftWidth(defaultLeftWidth)
+    setCompareSplit(50)
+    localStorage.removeItem('wfo-layout-left')
+    localStorage.removeItem('wfo-layout-compare')
+  }
+
   function renderStep() {
     switch (step) {
       case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/')} />
@@ -265,6 +272,15 @@ export default function ProcessBuilder() {
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
             </select>
+          )}
+          {(leftWidth !== defaultLeftWidth || compareSplit !== 50) && (
+            <button
+              onClick={handleResetLayout}
+              className="text-xs text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 transition-colors"
+              title="Reset to default layout"
+            >
+              ⊞ Reset layout
+            </button>
           )}
           <Button variant="outline" size="sm" onClick={handleSave}>
             {entry.status === 'submitted' ? 'Save Changes' : 'Save Draft'}
