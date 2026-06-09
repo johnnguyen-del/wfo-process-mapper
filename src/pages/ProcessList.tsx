@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import type { ProcessEntry, Domain } from '@/lib/types'
 import { listEntries, saveEntry } from '@/lib/storage'
-import { ExternalLink, Edit, Trash2, RefreshCw } from 'lucide-react'
+import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -69,7 +69,11 @@ export default function ProcessList() {
             {owner && <span className="ml-2 text-xs bg-foreground text-background px-1.5 py-0.5 rounded font-medium">Owner</span>}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Link to="/analytics" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium">
+            <BarChart2 className="w-3.5 h-3.5" />
+            Analytics
+          </Link>
           <Button variant="outline" size="sm" onClick={load} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh

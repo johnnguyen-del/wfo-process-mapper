@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Link } from "react-router-dom"
 import { Toaster } from "@/components/ui/sonner"
 import ProcessList from "@/pages/ProcessList"
 import ProcessBuilder from "@/pages/ProcessBuilder"
+import ProcessAnalytics from "@/pages/ProcessAnalytics"
 import ErrorBoundary from "@/components/ErrorBoundary"
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/" element={<ProcessList />} />
           <Route path="/new" element={<ProcessBuilder />} />
           <Route path="/edit/:id" element={<ProcessBuilder />} />
+          <Route path="/analytics" element={<ProcessAnalytics />} />
         </Routes>
       </div>
       <Toaster />
