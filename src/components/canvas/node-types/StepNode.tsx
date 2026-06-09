@@ -49,6 +49,7 @@ export default function StepNode({ data }: NodeProps) {
   const timeEstimate = (data as any).timeEstimate as string | undefined
   const showTimes = (data as any).showTimes as boolean | undefined
   const badge = (data as any).badge as { status?: string; priority?: string } | undefined
+  const durationMinutes = (data as any).durationMinutes as number | undefined
 
   return (
     <div className={cn('relative rounded-lg border-2 px-3 py-2 text-xs font-medium min-w-[110px] max-w-[160px] shadow-sm', color)}>
@@ -76,6 +77,9 @@ export default function StepNode({ data }: NodeProps) {
             <span className="opacity-50">add time</span>
           )}
         </div>
+      )}
+      {durationMinutes == null && (
+        <span className="absolute bottom-0.5 right-1 text-[9px] text-amber-500" title="Duration not set">⏱</span>
       )}
       <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-gray-400" />
     </div>

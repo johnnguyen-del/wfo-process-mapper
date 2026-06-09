@@ -68,7 +68,7 @@ function toRfNodes(nodes: ProcessNode[]): Node[] {
     id: n.id,
     type: n.type,
     position: n.position,
-    data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type, badge: n.badge },
+    data: { label: n.label, lane: n.lane, timeEstimate: n.timeEstimate, type: n.type, badge: n.badge, durationMinutes: n.durationMinutes },
   }))
 }
 
@@ -108,6 +108,7 @@ function fromRfNodes(rfNodes: Node[]): ProcessNode[] {
       lane: (n.data as any).lane as SwimLane,
       timeEstimate: (n.data as any).timeEstimate,
       badge: (n.data as any).badge,
+      durationMinutes: (n.data as any).durationMinutes,
       position: n.position,
     }))
 }
@@ -337,10 +338,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
     setRfNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, showTimes: next } })))
   }
 
-  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge']) {
+  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number) {
     setRfNodes((prev) => {
       const updated = prev.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge } } : n
+        n.id === id ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes } } : n
       )
       commit(updated, rfEdges)
       return updated
@@ -477,7 +478,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, onChange, onRela
       {editingNode && (
         <NodeEditDialog
           node={editingNode}
-          onSave={(id, label, time, lane, badge) => handleEditSave(id, label, time, lane, badge)}
+          onSave={(id, label, time, lane, badge, durationMinutes) => handleEditSave(id, label, time, lane, badge, durationMinutes)}
           onDelete={() => { handleNodeDelete(editingNode.id); setEditingNode(null) }}
           onClose={() => setEditingNode(null)}
         />

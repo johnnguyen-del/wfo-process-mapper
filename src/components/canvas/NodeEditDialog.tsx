@@ -13,7 +13,7 @@ const LANE_COLORS: Record<string, string> = {
 
 interface NodeEditDialogProps {
   node: Node
-  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge']) => void
+  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number) => void
   onDelete: () => void
   onClose: () => void
 }
@@ -24,6 +24,11 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
   const [lane, setLane] = useState<SwimLane>((node.data as any).lane ?? 'CS')
   const [badgeStatus, setBadgeStatus] = useState<string>((node.data as any).badge?.status ?? '')
   const [badgePriority, setBadgePriority] = useState<string>((node.data as any).badge?.priority ?? '')
+  const [durationMinutes, setDurationMinutes] = useState<string>(
+    (node.data as any).durationMinutes != null
+      ? String((node.data as any).durationMinutes)
+      : ''
+  )
 
   const isStartEnd = node.type === 'start' || node.type === 'end'
 
@@ -107,6 +112,17 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
                 <option value="low">Low</option>
               </select>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
+              <input
+                type="number"
+                min={0}
+                value={durationMinutes}
+                onChange={e => setDurationMinutes(e.target.value)}
+                placeholder="e.g. 5"
+                className="w-full border rounded px-2 py-1.5 text-sm"
+              />
+            </div>
           </>
         )}
       </div>
@@ -116,7 +132,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined })} className="flex-1">
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes ? Number(durationMinutes) : undefined)} className="flex-1">
           Save
         </Button>
       </div>
