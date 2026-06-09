@@ -207,7 +207,6 @@ interface CanvasInnerProps {
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
-  layoutKey?: number
 }
 
 function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
@@ -600,7 +599,6 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
-        layoutKey={layoutKey}
       />
     </ReactFlowProvider>
   )
