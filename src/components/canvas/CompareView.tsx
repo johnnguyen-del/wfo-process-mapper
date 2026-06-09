@@ -11,7 +11,7 @@ interface CompareViewProps {
   workato: boolean
   decagonL0: boolean
   compareSplit: number                         // 20–80, percentage of container width
-  onCompareSplitChange: (pct: number) => void
+  onCompareSplitChange: (pct: number, persist?: boolean) => void
 }
 
 export default function CompareView({
@@ -38,9 +38,12 @@ export default function CompareView({
     const startPct = compareSplit
     document.body.style.cursor = 'col-resize'
 
+    let finalPct = startPct
+
     function onMove(ev: MouseEvent) {
       const deltaPct = ((ev.clientX - startX) / containerWidth) * 100
-      onCompareSplitChange(Math.min(80, Math.max(20, startPct + deltaPct)))
+      finalPct = Math.min(80, Math.max(20, startPct + deltaPct))
+      onCompareSplitChange(finalPct)
     }
 
     function onUp() {
@@ -48,6 +51,7 @@ export default function CompareView({
       document.removeEventListener('mouseup', onUp)
       document.body.style.cursor = ''
       splitDragCleanupRef.current = null
+      onCompareSplitChange(finalPct, true)  // persist only on drag end
     }
 
     document.addEventListener('mousemove', onMove)

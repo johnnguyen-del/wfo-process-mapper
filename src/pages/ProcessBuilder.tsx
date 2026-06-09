@@ -39,11 +39,13 @@ export default function ProcessBuilder() {
 
   const [leftWidth, setLeftWidth] = useState<number>(() => {
     const saved = localStorage.getItem('wfo-layout-left')
-    return saved ? Number(saved) : defaultLeftWidth
+    const n = Number(saved)
+    return saved && !isNaN(n) ? n : defaultLeftWidth
   })
   const [compareSplit, setCompareSplit] = useState<number>(() => {
     const saved = localStorage.getItem('wfo-layout-compare')
-    return saved ? Number(saved) : 50
+    const n = Number(saved)
+    return saved && !isNaN(n) ? n : 50
   })
   const leftDragCleanupRef = useRef<(() => void) | null>(null)
   const [folders, setFolders] = useState<FolderEntry[]>([])
@@ -171,9 +173,9 @@ export default function ProcessBuilder() {
     }
   }
 
-  function handleCompareSplitChange(pct: number) {
+  function handleCompareSplitChange(pct: number, persist = false) {
     setCompareSplit(pct)
-    localStorage.setItem('wfo-layout-compare', String(pct))
+    if (persist) localStorage.setItem('wfo-layout-compare', String(pct))
   }
 
   function renderStep() {
