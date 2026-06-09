@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import type { ProcessEntry, Domain } from '@/lib/types'
-import { listEntries, saveEntry } from '@/lib/storage'
+import type { ProcessEntry, Domain, FolderEntry } from '@/lib/types'
+import { listEntries, loadFolders, saveFolder, deleteFolder } from '@/lib/storage'
 import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import FolderSidebar from '@/components/FolderSidebar'
 
 const TIER_COLORS = {
   High: 'bg-red-100 text-red-700',
@@ -27,13 +28,34 @@ export default function ProcessList() {
   const [entries, setEntries] = useState<ProcessEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [owner] = useState(isOwner)
+  const [folders, setFolders] = useState<FolderEntry[]>([])
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
     listEntries().then((e) => { setEntries(e); setLoading(false) })
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    loadFolders().then(setFolders)
+  }, [])
+
+  async function handleCreateFolder(name: string) {
+    const folder: FolderEntry = {
+      id: crypto.randomUUID(),
+      name,
+      createdAt: new Date().toISOString(),
+    }
+    await saveFolder(folder)
+    setFolders(prev => [...prev, folder])
+  }
+
+  async function handleDeleteFolder(id: string) {
+    await deleteFolder(id)
+    setFolders(prev => prev.filter(f => f.id !== id))
+    if (selectedFolderId === id) setSelectedFolderId(null)
+  }
 
   async function handleDelete(entry: ProcessEntry) {
     if (!window.confirm(`Delete "${entry.processName}"? This cannot be undone.`)) return
@@ -53,14 +75,26 @@ export default function ProcessList() {
     }
   }
 
+  const visibleEntries = selectedFolderId
+    ? entries.filter(e => e.folderId === selectedFolderId)
+    : entries
+
   const domains = ['Banking', 'Transfers', 'Invest', 'Security & Risk'] as Domain[]
   const grouped = Object.fromEntries(
-    domains.map((d) => [d, entries.filter((e) => e.domain === d)])
+    domains.map((d) => [d, visibleEntries.filter((e) => e.domain === d)])
   )
-  const undomained = entries.filter((e) => !e.domain)
+  const undomained = visibleEntries.filter((e) => !e.domain)
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="flex min-h-screen">
+      <FolderSidebar
+        folders={folders}
+        selectedFolderId={selectedFolderId}
+        onSelect={setSelectedFolderId}
+        onCreateFolder={handleCreateFolder}
+        onDeleteFolder={handleDeleteFolder}
+      />
+      <div className="flex-1 p-8 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">WFO Process Mapper</h1>
@@ -86,10 +120,9 @@ export default function ProcessList() {
 
       {loading ? (
         <div className="text-muted-foreground text-sm py-12 text-center">Loading…</div>
-      ) : entries.length === 0 ? (
+      ) : visibleEntries.length === 0 ? (
         <div className="text-muted-foreground text-sm py-16 text-center border rounded-lg">
-          No processes captured yet.{' '}
-          <Link to="/new" className="underline hover:text-foreground">Start with + New Process</Link>
+          {selectedFolderId ? 'No processes in this folder.' : <>No processes captured yet.{' '}<Link to="/new" className="underline hover:text-foreground">Start with + New Process</Link></>}
         </div>
       ) : (
         <div className="space-y-8">
@@ -119,6 +152,7 @@ export default function ProcessList() {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -14,8 +14,8 @@ import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
-import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode } from '@/lib/types'
-import { generateId, loadEntry, saveEntry } from '@/lib/storage'
+import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry } from '@/lib/types'
+import { generateId, loadEntry, saveEntry, loadFolders } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
 import { autoLayout } from '@/lib/export'
 import type { FormFillPatch } from '@/lib/ai'
@@ -32,6 +32,7 @@ export default function ProcessBuilder() {
   const [canvasDirection, setCanvasDirection] = useState<CanvasDirection>('LR')
   const [lineStyle, setLineStyle] = useState<LineStyle>('default')
   const [viewMode, setViewMode] = useState<ViewMode>('current')
+  const [folders, setFolders] = useState<FolderEntry[]>([])
 
   useEffect(() => {
     if (id) {
@@ -40,6 +41,8 @@ export default function ProcessBuilder() {
       })
     }
   }, [id])
+
+  useEffect(() => { loadFolders().then(setFolders) }, [])
 
   function patch(update: Partial<ProcessEntry>) {
     setEntry((prev) => {
@@ -186,7 +189,20 @@ export default function ProcessBuilder() {
             ))}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {folders.length > 0 && (
+            <select
+              value={entry.folderId ?? ''}
+              onChange={e => patch({ folderId: e.target.value || undefined })}
+              className="text-xs border rounded px-2 py-1 bg-background text-foreground"
+              title="Assign to folder"
+            >
+              <option value="">No folder</option>
+              {folders.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          )}
           <Button variant="outline" size="sm" onClick={handleSave}>
             {entry.status === 'submitted' ? 'Save Changes' : 'Save Draft'}
           </Button>
