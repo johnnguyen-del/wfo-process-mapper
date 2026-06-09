@@ -30,7 +30,7 @@ export default function AutomationNode({ data }: NodeProps) {
         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">Automation</span>
         {badge?.status && (
           <span className={cn('text-[9px] font-semibold px-1 rounded border', STATUS_COLORS[badge.status] ?? '')}>
-            {badge.status === 'review' ? 'review' : badge.status}
+            {badge.status === 'review' ? 'Needs Review' : badge.status}
           </span>
         )}
       </div>

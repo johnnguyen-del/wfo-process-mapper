@@ -32,7 +32,7 @@ export default function DecisionNode({ data }: NodeProps) {
       </span>
       {badge?.status && (
         <span className={cn('absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded border whitespace-nowrap z-10', STATUS_COLORS[badge.status] ?? '')}>
-          {badge.status === 'review' ? 'review' : badge.status}
+          {badge.status === 'review' ? 'Needs Review' : badge.status}
         </span>
       )}
       <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-amber-500 !right-0" />

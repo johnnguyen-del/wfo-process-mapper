@@ -3,7 +3,7 @@ import type { Node } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, X } from 'lucide-react'
-import type { SwimLane } from '@/lib/types'
+import type { SwimLane, ProcessNode } from '@/lib/types'
 
 const LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
 const LANE_COLORS: Record<string, string> = {
@@ -13,7 +13,7 @@ const LANE_COLORS: Record<string, string> = {
 
 interface NodeEditDialogProps {
   node: Node
-  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: { status?: string; priority?: string }) => void
+  onSave: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge']) => void
   onDelete: () => void
   onClose: () => void
 }

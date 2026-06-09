@@ -62,7 +62,7 @@ export default function StepNode({ data }: NodeProps) {
         </span>
         {badge?.status && (
           <span className={cn('text-[9px] font-semibold px-1 rounded border', STATUS_COLORS[badge.status] ?? '')}>
-            {badge.status === 'review' ? 'review' : badge.status}
+            {badge.status === 'review' ? 'Needs Review' : badge.status}
           </span>
         )}
       </div>
