@@ -27,9 +27,11 @@ export default function FolderSidebar({
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | 'all'>(null)
+  const [localFolders, setLocalFolders] = useState<FolderEntry[]>([])
   const draggingFolderRef = useRef<string | null>(null)
 
   const rootFolders = folders.filter(f => !f.parentId)
+  const displayFolders = localFolders.length > 0 ? localFolders : rootFolders
 
   function handleCreate() {
     const trimmed = newName.trim()
@@ -43,23 +45,31 @@ export default function FolderSidebar({
     draggingFolderRef.current = folderId
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('folder-id', folderId)
+    setLocalFolders([...rootFolders])  // snapshot current order
   }
 
   function handleFolderDragOver(e: React.DragEvent, targetFolderId: string) {
     if (!draggingFolderRef.current) return
     if (draggingFolderRef.current === targetFolderId) return
     e.preventDefault()
-    const from = rootFolders.findIndex(f => f.id === draggingFolderRef.current)
-    const to = rootFolders.findIndex(f => f.id === targetFolderId)
-    if (from === -1 || to === -1) return
-    const reordered = [...rootFolders]
-    const [moved] = reordered.splice(from, 1)
-    reordered.splice(to, 0, moved)
-    onReorderFolders(reordered)
-    draggingFolderRef.current = targetFolderId
+    setLocalFolders(prev => {
+      const list = prev.length > 0 ? prev : [...rootFolders]
+      const from = list.findIndex(f => f.id === draggingFolderRef.current)
+      const to = list.findIndex(f => f.id === targetFolderId)
+      if (from === -1 || to === -1) return list
+      const reordered = [...list]
+      const [moved] = reordered.splice(from, 1)
+      reordered.splice(to, 0, moved)
+      draggingFolderRef.current = targetFolderId
+      return reordered
+    })
   }
 
   function handleFolderDragEnd() {
+    if (localFolders.length > 0) {
+      onReorderFolders(localFolders)
+    }
+    setLocalFolders([])
     draggingFolderRef.current = null
   }
 
@@ -77,8 +87,10 @@ export default function FolderSidebar({
     if (processId) onAssignProcess(processId, targetFolderId)
   }
 
-  function handleProcessDragLeave() {
-    setDragOverFolderId(null)
+  function handleProcessDragLeave(e: React.DragEvent) {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDragOverFolderId(null)
+    }
   }
 
   function countForFolder(folderId: string) {
@@ -108,7 +120,7 @@ export default function FolderSidebar({
         All Processes
       </button>
 
-      {rootFolders.map(folder => {
+      {displayFolders.map(folder => {
         const count = countForFolder(folder.id)
         const isDropTarget = isProcessDragOver(folder.id)
         return (
@@ -116,11 +128,11 @@ export default function FolderSidebar({
             key={folder.id}
             className="flex items-center gap-1 group"
             onDragOver={e => handleFolderDragOver(e, folder.id)}
-            onDragEnd={handleFolderDragEnd}
           >
             <div
               draggable
               onDragStart={e => handleFolderDragStart(e, folder.id)}
+              onDragEnd={handleFolderDragEnd}
               className="opacity-0 group-hover:opacity-100 cursor-grab shrink-0 text-muted-foreground p-0.5"
             >
               <GripVertical className="w-3 h-3" />
