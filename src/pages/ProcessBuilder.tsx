@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Node } from '@xyflow/react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sparkles, FormInput, CheckCircle, ExternalLink, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -140,6 +140,16 @@ export default function ProcessBuilder() {
   const justAutoSavedRef = useRef(false)
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [autoSaving, setAutoSaving] = useState(false)
+
+  const [searchParams] = useSearchParams()
+
+  // Read path highlight from URL — only on mount, intentionally empty deps
+  const initialHighlight = useMemo(() => {
+    const pathParam = searchParams.get('path')
+    if (!pathParam) return undefined
+    const ids = pathParam.split(',').filter(Boolean)
+    return ids.length > 0 ? new Set(ids) : undefined
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (id) {
@@ -588,6 +598,7 @@ export default function ProcessBuilder() {
                 lineStyle={lineStyle}
                 canvasLabel="Current Flow"
                 domain={entry.domain || undefined}
+                initialHighlight={initialHighlight}
                 onChange={(map) => patch({ processMap: map })}
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}

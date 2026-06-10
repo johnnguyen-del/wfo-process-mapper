@@ -248,6 +248,7 @@ interface CanvasInnerProps {
   readOnly?: boolean
   colorMode?: 'light' | 'dark'
   domain?: string
+  initialHighlight?: Set<string>
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -259,7 +260,7 @@ interface CanvasInnerProps {
   }) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -268,7 +269,9 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showTimes, setShowTimes] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
   const [showOutcomes, setShowOutcomes] = useState(false)
-  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(
+    () => initialHighlight && initialHighlight.size > 0 ? new Set(initialHighlight) : new Set()
+  )
   const [isolateMode, setIsolateMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [editingEdge, setEditingEdge] = useState<{
@@ -999,6 +1002,7 @@ interface ProcessCanvasProps {
   readOnly?: boolean
   colorMode?: 'light' | 'dark'
   domain?: string
+  initialHighlight?: Set<string>
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -1015,7 +1019,7 @@ interface ProcessCanvasProps {
   }) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
   const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
@@ -1048,6 +1052,7 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         readOnly={readOnly}
         colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
         domain={domain}
+        initialHighlight={initialHighlight}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
