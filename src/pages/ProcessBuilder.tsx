@@ -98,6 +98,7 @@ export default function ProcessBuilder() {
   })
   const leftDragCleanupRef = useRef<(() => void) | null>(null)
   const [folders, setFolders] = useState<FolderEntry[]>([])
+  const [autoSaving, setAutoSaving] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -111,6 +112,35 @@ export default function ProcessBuilder() {
   }, [id])
 
   useEffect(() => { loadFolders().then(setFolders) }, [])
+
+  // Auto-save: debounce 30s after any entry change, draft only, named process only
+  useEffect(() => {
+    if (entry.status === 'submitted' || !entry.processName.trim()) return
+    setAutoSaving(true)
+    const timer = setTimeout(() => {
+      handleSave()
+      setAutoSaving(false)
+    }, 30_000)
+    return () => {
+      clearTimeout(timer)
+      setAutoSaving(false)
+    }
+  }, [entry]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        const target = e.target as HTMLElement
+        const isEditable = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+        if (!isEditable) {
+          e.preventDefault()
+          handleSave()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -323,6 +353,9 @@ export default function ProcessBuilder() {
           </div>
         </div>
         <div className="flex gap-2 items-center">
+          {autoSaving && (
+            <span className="text-xs text-muted-foreground animate-pulse">Auto-saving…</span>
+          )}
           {folders.length > 0 && (
             <select
               value={entry.folderId ?? ''}
