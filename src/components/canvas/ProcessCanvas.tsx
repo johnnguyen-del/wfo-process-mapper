@@ -263,6 +263,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showMetrics, setShowMetrics] = useState(false)
   const [showOutcomes, setShowOutcomes] = useState(false)
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [isolateMode, setIsolateMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [editingEdge, setEditingEdge] = useState<{
     id: string
@@ -443,17 +444,27 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfEdges(toRfEdges(processMap.edges, lineStyle))
   }, [lineStyle, processMap.edges])
 
-  // Dim non-highlighted nodes when a path is selected
+  // Dim/hide non-highlighted nodes when a path is selected
   useEffect(() => {
     if (highlightedNodes.size === 0) {
-      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1 } })))
+      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1, pointerEvents: undefined } })))
+      setIsolateMode(false)
+    } else if (isolateMode) {
+      setRfNodes(prev => prev.map(n => ({
+        ...n,
+        style: {
+          ...n.style,
+          opacity: highlightedNodes.has(n.id) ? 1 : 0,
+          pointerEvents: highlightedNodes.has(n.id) ? undefined : 'none' as const,
+        },
+      })))
     } else {
       setRfNodes(prev => prev.map(n => ({
         ...n,
         style: { ...n.style, opacity: highlightedNodes.has(n.id) ? 1 : 0.2 },
       })))
     }
-  }, [highlightedNodes])
+  }, [highlightedNodes, isolateMode])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -745,7 +756,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           </button>
           {!readOnly && (
             <button
-              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) setHighlightedNodes(new Set()) }}
+              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) { setHighlightedNodes(new Set()); setIsolateMode(false) } }}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
                 showOutcomes
@@ -787,7 +798,8 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           <OutcomePanel
             processMap={processMap}
             onHighlight={setHighlightedNodes}
-            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()) }}
+            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()); setIsolateMode(false) }}
+            onIsolate={setIsolateMode}
           />
         )}
         {editingEdge && (
