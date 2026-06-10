@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import ProcessCanvas from './ProcessCanvas'
 import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner } from '@/lib/types'
 import { computeMetrics } from '@/lib/metrics'
