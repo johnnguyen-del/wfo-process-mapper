@@ -74,6 +74,7 @@ export default function ProcessBuilder() {
   // Direct getter into CanvasInner's live rfNodes state — bypasses the
   // entry.processMap sync chain which can be stale at save time.
   const getCanvasMapRef = useRef<(() => ProcessMap) | null>(null)
+  const handleSaveRef = useRef<() => void>(() => {})
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [leftTab, setLeftTab] = useState<'form' | 'ai' | 'details'>('form')
@@ -97,6 +98,7 @@ export default function ProcessBuilder() {
     return saved && !isNaN(n) ? n : 50
   })
   const leftDragCleanupRef = useRef<(() => void) | null>(null)
+  const justAutoSavedRef = useRef(false)
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [autoSaving, setAutoSaving] = useState(false)
 
@@ -113,12 +115,20 @@ export default function ProcessBuilder() {
 
   useEffect(() => { loadFolders().then(setFolders) }, [])
 
+  // Keep ref current so stale-closure effects always call the latest handleSave
+  handleSaveRef.current = handleSave
+
   // Auto-save: debounce 30s after any entry change, draft only, named process only
   useEffect(() => {
     if (entry.status === 'submitted' || !entry.processName.trim()) return
+    if (justAutoSavedRef.current) {
+      justAutoSavedRef.current = false  // reset after one skip
+      return
+    }
     setAutoSaving(true)
     const timer = setTimeout(() => {
-      handleSave()
+      justAutoSavedRef.current = true
+      handleSaveRef.current()
       setAutoSaving(false)
     }, 30_000)
     return () => {
@@ -131,10 +141,10 @@ export default function ProcessBuilder() {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         const target = e.target as HTMLElement
-        const isEditable = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+        const isEditable = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
         if (!isEditable) {
           e.preventDefault()
-          handleSave()
+          handleSaveRef.current()
         }
       }
     }
