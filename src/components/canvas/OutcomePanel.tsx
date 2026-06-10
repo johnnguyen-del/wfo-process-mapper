@@ -65,7 +65,7 @@ export default function OutcomePanel({ processMap, onHighlight, onClose, onIsola
               ⚖ Compare
             </button>
           )}
-          <button onClick={() => { onHighlight(new Set()); onIsolate?.(false); onClose() }} className="text-muted-foreground hover:text-foreground leading-none">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground leading-none" title="Close panel (keeps highlight)">✕</button>
         </div>
       </div>
 
