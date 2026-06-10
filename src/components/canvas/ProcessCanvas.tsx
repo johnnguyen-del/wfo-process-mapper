@@ -6,6 +6,7 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
+  MiniMap,
   addEdge,
   applyNodeChanges,
   useNodesState,
@@ -70,6 +71,17 @@ export const LANE_LABEL_COLORS: Record<SwimLane, string> = {
 const ALL_LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
 
 const EDGE_MARKER = { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 }
+
+const NODE_MINIMAP_COLORS: Partial<Record<ProcessNodeType, string>> = {
+  start: '#f97316',
+  end: '#f97316',
+  step: '#3b82f6',
+  decision: '#a855f7',
+  automation: '#10b981',
+  comms: '#f59e0b',
+  swimlane: '#bfdbfe',
+  sticky: '#fef9c3',
+}
 
 function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Node[] {
   const sourcePos = direction === 'TB' ? Position.Bottom : Position.Right
@@ -571,6 +583,14 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           </div>
         )}
 
+        {rfNodes.length === 0 && !readOnly && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 gap-2">
+            <p className="text-sm text-muted-foreground/40 select-none">
+              Drag nodes from the palette to start mapping
+            </p>
+          </div>
+        )}
+
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
@@ -603,6 +623,15 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           {/* SwimlaneOverlay removed — free layout with color-coded nodes instead */}
           <Background gap={20} size={1} color="#e5e7eb50" />
           <Controls />
+          {!readOnly && (
+            <MiniMap
+              nodeColor={(n) => NODE_MINIMAP_COLORS[n.type as ProcessNodeType] ?? '#94a3b8'}
+              maskColor="rgba(0,0,0,0.04)"
+              style={{ bottom: 64, right: 8, width: 160, height: 100 }}
+              pannable
+              zoomable
+            />
+          )}
         </ReactFlow>
 
         {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
