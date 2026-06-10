@@ -2,10 +2,13 @@ import { HashRouter, Routes, Route, Link } from "react-router-dom"
 import { ThemeProvider, useTheme } from 'next-themes'
 import { Sun, Moon } from 'lucide-react'
 import { Toaster } from "@/components/ui/sonner"
+import Landing from "@/pages/Landing"
 import ProcessList from "@/pages/ProcessList"
 import ProcessBuilder from "@/pages/ProcessBuilder"
 import ProcessAnalytics from "@/pages/ProcessAnalytics"
 import ErrorBoundary from "@/components/ErrorBoundary"
+
+const NOTION_GUIDE_URL = 'https://app.notion.com/p/wealthsimple/WFO-Process-Mapper-How-To-Use-37b41167bd968135a22dfb428cea5e4b'
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -34,15 +37,24 @@ export default function App() {
                 ⚡ WFO Process Mapper
               </Link>
               <nav className="flex gap-3 text-sm text-muted-foreground">
-                <Link to="/" className="hover:text-foreground transition-colors">Processes</Link>
+                <Link to="/processes" className="hover:text-foreground transition-colors">Processes</Link>
                 <Link to="/new" className="hover:text-foreground transition-colors">+ New Process</Link>
               </nav>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-3">
+                <a
+                  href={NOTION_GUIDE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-500 hover:text-indigo-600 font-medium transition-colors flex items-center gap-1"
+                >
+                  📖 How to Use
+                </a>
                 <ThemeToggle />
               </div>
             </header>
             <Routes>
-              <Route path="/" element={<ProcessList />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/processes" element={<ProcessList />} />
               <Route path="/new" element={<ProcessBuilder />} />
               <Route path="/edit/:id" element={<ProcessBuilder />} />
               <Route path="/analytics" element={<ProcessAnalytics />} />

@@ -74,7 +74,7 @@ export default function ProcessAnalytics() {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b px-6 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild><Link to="/">← Back</Link></Button>
+        <Button variant="ghost" size="sm" asChild><Link to="/processes">← Back</Link></Button>
         <BarChart2 className="w-4 h-4 text-muted-foreground" />
         <h1 className="text-sm font-semibold">Process Analytics</h1>
       </div>

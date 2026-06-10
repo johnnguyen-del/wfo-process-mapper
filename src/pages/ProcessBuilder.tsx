@@ -371,7 +371,7 @@ export default function ProcessBuilder() {
 
   function renderStep() {
     switch (step) {
-      case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/')} />
+      case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/processes')} />
       case 1: return <CoreIdentityStep entry={entry} onChange={patch} />
       case 2: return <VolumeToolingStep entry={entry} onChange={patch} />
       case 3: return <AutomationStep entry={entry} onChange={patch} />
@@ -403,7 +403,7 @@ export default function ProcessBuilder() {
               Open in Notion
             </a>
           </Button>
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <Button variant="outline" onClick={() => navigate('/processes')}>
             Back to process list
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setSubmitSuccess(null)}>
@@ -420,7 +420,7 @@ export default function ProcessBuilder() {
       <div className="border-b px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/">← Back</Link>
+            <Link to="/processes">← Back</Link>
           </Button>
           <span className="text-sm font-medium truncate max-w-[200px]">
             {entry.processName || 'New Process'}
