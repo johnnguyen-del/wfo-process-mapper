@@ -320,7 +320,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         if (selectedNodes.length === 0) return
         const selectedIds = new Set(selectedNodes.map(n => n.id))
         const connectedEdges = rfEdgesRef.current.filter(
-          e => selectedIds.has(e.source) && selectedIds.has(e.target)
+          edge => selectedIds.has(edge.source) && selectedIds.has(edge.target)
         )
         clipboardRef.current = {
           nodes: fromRfNodes(selectedNodes),
@@ -334,21 +334,20 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         const cb = clipboardRef.current
         if (!cb || cb.nodes.length === 0) return
 
-        const stamp = Date.now()
+        const stamp = crypto.randomUUID().split('-')[0]
         const idMap = new Map<string, string>()
         cb.nodes.forEach(n => idMap.set(n.id, `copy-${stamp}-${n.id}`))
 
-        // Compute paste position: cursor or +30/+30 offset
-        const firstNode = cb.nodes[0]
-        let originX = firstNode.position.x + 30
-        let originY = firstNode.position.y + 30
+        // Compute paste position: cursor or +30/+30 offset from bounding-box top-left
+        const minX = Math.min(...cb.nodes.map(n => n.position.x))
+        const minY = Math.min(...cb.nodes.map(n => n.position.y))
+        let originX = minX + 30
+        let originY = minY + 30
 
         if (mousePosRef.current) {
           const flowPos = screenToFlowPosition(mousePosRef.current)
-          const minX = Math.min(...cb.nodes.map(n => n.position.x))
-          const minY = Math.min(...cb.nodes.map(n => n.position.y))
-          originX = flowPos.x - (firstNode.position.x - minX)
-          originY = flowPos.y - (firstNode.position.y - minY)
+          originX = flowPos.x
+          originY = flowPos.y
         }
 
         const pastedNodes: ProcessNode[] = cb.nodes.map(n => ({
@@ -356,8 +355,8 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           id: idMap.get(n.id)!,
           locked: undefined, // pasted nodes start unlocked
           position: {
-            x: originX + (n.position.x - firstNode.position.x),
-            y: originY + (n.position.y - firstNode.position.y),
+            x: originX + (n.position.x - minX),
+            y: originY + (n.position.y - minY),
           },
         }))
 
