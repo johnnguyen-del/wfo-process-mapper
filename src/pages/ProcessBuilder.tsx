@@ -427,7 +427,12 @@ export default function ProcessBuilder() {
           </span>
           {/* Mode toggle */}
           <div className="flex border rounded-md overflow-hidden">
-            {(['current', 'optimization', 'compare'] as ViewMode[]).map(mode => (
+            {([
+              { mode: 'current', label: 'Current' },
+              { mode: 'interim', label: '⚡ Interim' },
+              { mode: 'ideal', label: '✦ Ideal' },
+              { mode: 'compare', label: '⟺ Compare' },
+            ] as { mode: ViewMode; label: string }[]).map(({ mode, label }) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -438,7 +443,7 @@ export default function ProcessBuilder() {
                     : 'bg-background text-muted-foreground hover:bg-muted/40'
                 )}
               >
-                {mode === 'compare' ? '⟺ Compare' : mode === 'optimization' ? '✦ Ideal' : 'Current'}
+                {label}
               </button>
             ))}
           </div>
@@ -584,7 +589,7 @@ export default function ProcessBuilder() {
         <div className="flex-1 flex flex-col overflow-hidden canvas-fullscreen-target">
           <div className="px-4 py-2 border-b text-xs text-muted-foreground shrink-0">
             {viewMode === 'compare'
-              ? 'Compare view — Current Flow vs. Ideal Flow (read-only)'
+              ? 'Compare view — Current · Interim · Ideal (read-only)'
               : 'Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove'}
           </div>
           <div className="flex-1 relative">
@@ -608,7 +613,7 @@ export default function ProcessBuilder() {
                 onRegisterEditHandler={(handler) => { editHandlerRef.current = handler }}
               />
             )}
-            {viewMode === 'optimization' && (
+            {viewMode === 'ideal' && (
               <>
                 <ProcessCanvas
                   processMap={entry.optimizationMap ?? { nodes: [], edges: [] }}
@@ -639,10 +644,49 @@ export default function ProcessBuilder() {
                 )}
               </>
             )}
+            {viewMode === 'interim' && (
+              <>
+                <ProcessCanvas
+                  processMap={entry.interimMap ?? { nodes: [], edges: [] }}
+                  teamOwner={entry.teamOwner}
+                  workato={entry.workato}
+                  decagonL0={entry.decagonL0}
+                  direction={canvasDirection}
+                  lineStyle={lineStyle}
+                  canvasLabel="Interim Fixed"
+                  onChange={(map) => patch({ interimMap: map })}
+                  onRelayout={(direction) => {
+                    setCanvasDirection(direction)
+                    setEntry(prev => {
+                      if (!prev.interimMap) return prev
+                      const relaid = autoLayout(prev.interimMap.nodes, prev.interimMap.edges, direction)
+                      return { ...prev, interimMap: { nodes: relaid, edges: prev.interimMap.edges } }
+                    })
+                    setLayoutKey(k => k + 1)
+                  }}
+                  onLineStyleChange={setLineStyle}
+                  layoutKey={layoutKey}
+                />
+                {entry.interimMap === undefined && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <div className="bg-background border rounded-lg p-4 text-center shadow-lg pointer-events-auto">
+                      <p className="text-sm text-muted-foreground mb-3">Start with a blank canvas or clone from current</p>
+                      <button
+                        onClick={() => patch({ interimMap: structuredClone(entry.processMap) })}
+                        className="px-4 py-2 bg-foreground text-background rounded text-xs font-medium"
+                      >
+                        Clone Current Flow
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             {viewMode === 'compare' && (
               <CompareView
                 currentMap={entry.processMap}
                 optimizationMap={entry.optimizationMap ?? { nodes: [], edges: [] }}
+                interimMap={entry.interimMap ?? { nodes: [], edges: [] }}
                 direction={canvasDirection}
                 lineStyle={lineStyle}
                 teamOwner={entry.teamOwner}

@@ -59,7 +59,7 @@ export interface ProcessEdge {
 
 export type CanvasDirection = 'LR' | 'TB'
 export type LineStyle = 'default' | 'step'
-export type ViewMode = 'current' | 'optimization' | 'compare'
+export type ViewMode = 'current' | 'interim' | 'ideal' | 'compare'
 
 export interface ProcessMap {
   nodes: ProcessNode[]
@@ -103,6 +103,7 @@ export interface ProcessEntry {
   // Process Map
   processMap: ProcessMap
   optimizationMap?: ProcessMap   // stores the "ideal flow" canvas for Mirror Mode
+  interimMap?: ProcessMap    // Interim Fixed flow canvas
 
   // Integrations & Organization
   sourceUrl?: string         // "Blowout Link" — original process source
@@ -146,6 +147,7 @@ export function emptyEntry(id: string): ProcessEntry {
     otherMetrics: '',
     processMap: { nodes: [], edges: [] },
     optimizationMap: undefined,
+    interimMap: undefined,
     sourceUrl: undefined,
     kbLinks: undefined,
     folderId: undefined,
