@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
 import html2canvas from 'html2canvas'
 import { ArrowDown, ArrowRight, BarChart2, Clock, Download, GitBranch, GitMerge, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -245,13 +246,14 @@ interface CanvasInnerProps {
   lineStyle: LineStyle
   canvasLabel?: string
   readOnly?: boolean
+  colorMode?: 'light' | 'dark'
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
   onRegisterGetter?: (getter: () => ProcessMap) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange, onRegisterGetter }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, onChange, onRelayout, onLineStyleChange, onRegisterGetter }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -917,6 +919,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           selectionOnDrag
           panOnDrag={[1, 2]}
           onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
+          colorMode={colorMode ?? 'light'}
           style={{ background: 'transparent' }}
         >
           {/* SwimlaneOverlay removed — free layout with color-coded nodes instead */}
@@ -961,6 +964,7 @@ interface ProcessCanvasProps {
   lineStyle: LineStyle
   canvasLabel?: string
   readOnly?: boolean
+  colorMode?: 'light' | 'dark'
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -971,6 +975,7 @@ interface ProcessCanvasProps {
 }
 
 export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter }: ProcessCanvasProps) {
+  const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -1000,6 +1005,7 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         lineStyle={lineStyle}
         canvasLabel={canvasLabel}
         readOnly={readOnly}
+        colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
