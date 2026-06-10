@@ -17,6 +17,7 @@ export default function StickyNode({ data }: NodeProps) {
   return (
     <div
       style={{
+        position: 'relative',
         width: 160,
         minHeight: 100,
         backgroundColor: bg,
@@ -34,6 +35,9 @@ export default function StickyNode({ data }: NodeProps) {
         pointerEvents: 'auto',
       }}
     >
+      {(data as any).locked && (
+        <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 9, opacity: 0.6 }} title="Locked">🔒</span>
+      )}
       {label || <span style={{ opacity: 0.4 }}>Double-click to edit</span>}
     </div>
   )

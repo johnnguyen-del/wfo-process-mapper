@@ -394,7 +394,9 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   }
 
   function handleDeleteSelected() {
-    const selectedIds = new Set(rfNodes.filter(n => n.selected).map(n => n.id))
+    const selectedIds = new Set(
+      rfNodes.filter(n => n.selected && !n.data?.locked).map(n => n.id)
+    )
     if (selectedIds.size === 0) return
     setRfNodes(prev => {
       const updated = prev.filter(n => !selectedIds.has(n.id))
@@ -409,9 +411,11 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     if (readOnly) return
     setRfNodes(prev => {
       const updated = prev.map(n =>
-        n.selected ? { ...n, data: { ...n.data, locked: lock }, draggable: !lock, deletable: !lock } : n
+        n.selected && n.type !== 'start' && n.type !== 'end'
+          ? { ...n, data: { ...n.data, locked: lock }, draggable: !lock, deletable: !lock }
+          : n
       )
-      commit(fromRfNodes(updated), fromRfEdges(rfEdges))
+      commit(updated, rfEdges)
       return updated
     })
   }

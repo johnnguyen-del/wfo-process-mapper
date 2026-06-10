@@ -208,7 +208,14 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
       </div>
 
       <div className="flex gap-2 mt-4">
-        <Button variant="destructive" size="sm" onClick={onDelete} className="gap-1">
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onDelete}
+          className="gap-1"
+          disabled={locked}
+          title={locked ? 'Unlock node before deleting' : undefined}
+        >
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
