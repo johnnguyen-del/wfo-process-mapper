@@ -950,10 +950,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
           deleteKeyCode={readOnly ? null : 'Delete'}
           multiSelectionKeyCode="Shift"
-          selectionKeyCode="Shift"
           selectionOnDrag
-          panOnDrag={[0, 1, 2]}
+          panOnDrag={[1, 2]}
           panOnScroll={true}
+          panActivationKeyCode="Space"
           onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
           colorMode={colorMode ?? 'light'}
           style={{ background: 'transparent' }}
