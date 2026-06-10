@@ -11,8 +11,10 @@ interface CompareViewProps {
   teamOwner: TeamOwner[]
   workato: boolean
   decagonL0: boolean
-  compareSplit: number                         // 20–80, percentage of container width
+  compareSplit: number
   onCompareSplitChange: (pct: number, persist?: boolean) => void
+  onLineStyleChange: (style: LineStyle) => void
+  onDirectionChange: (dir: CanvasDirection) => void
 }
 
 export default function CompareView({
@@ -25,6 +27,8 @@ export default function CompareView({
   decagonL0,
   compareSplit,
   onCompareSplitChange,
+  onLineStyleChange,
+  onDirectionChange,
 }: CompareViewProps) {
   const [showStats, setShowStats] = useState(false)
 
@@ -143,12 +147,12 @@ export default function CompareView({
             teamOwner={teamOwner}
             workato={workato}
             decagonL0={decagonL0}
-            direction="LR"
+            direction={direction}
             lineStyle={lineStyle}
             readOnly
             onChange={noOp}
-            onRelayout={noOp}
-            onLineStyleChange={noOp}
+            onRelayout={(dir) => onDirectionChange(dir)}
+            onLineStyleChange={onLineStyleChange}
           />
         </div>
       </div>
@@ -173,12 +177,12 @@ export default function CompareView({
             teamOwner={teamOwner}
             workato={workato}
             decagonL0={decagonL0}
-            direction="LR"
+            direction={direction}
             lineStyle={lineStyle}
             readOnly
             onChange={noOp}
-            onRelayout={noOp}
-            onLineStyleChange={noOp}
+            onRelayout={(dir) => onDirectionChange(dir)}
+            onLineStyleChange={onLineStyleChange}
           />
         </div>
       </div>

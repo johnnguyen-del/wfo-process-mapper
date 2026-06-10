@@ -650,6 +650,8 @@ export default function ProcessBuilder() {
                 decagonL0={entry.decagonL0}
                 compareSplit={compareSplit}
                 onCompareSplitChange={handleCompareSplitChange}
+                onLineStyleChange={setLineStyle}
+                onDirectionChange={setCanvasDirection}
               />
             )}
           </div>
