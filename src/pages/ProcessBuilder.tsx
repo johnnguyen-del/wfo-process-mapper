@@ -101,6 +101,17 @@ export default function ProcessBuilder() {
     historyIdxRef.current = historyRef.current.length - 1
   }
 
+  // Capture the authenticated user email. MagicAuth may not be ready at the
+  // synchronous mount tick, so we try immediately and retry after 1 second.
+  const currentUserEmailRef = useRef('')
+  useEffect(() => {
+    const read = () => (window as any).MagicAuth?.viewer?.()?.email ?? ''
+    const immediate = read()
+    if (immediate) { currentUserEmailRef.current = immediate; return }
+    const t = setTimeout(() => { currentUserEmailRef.current = read() }, 1000)
+    return () => clearTimeout(t)
+  }, [])
+
   const handleSaveRef = useRef<() => void>(() => {})
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
@@ -226,7 +237,7 @@ export default function ProcessBuilder() {
 
   function handleSave() {
     const now = new Date().toISOString()
-    const by = (window as any).MagicAuth?.viewer?.()?.email ?? 'unknown'
+    const by = currentUserEmailRef.current || (window as any).MagicAuth?.viewer?.()?.email || entry.author || 'unknown'
     // Read fresh positions directly from CanvasInner's rfNodes state.
     // entry.processMap can be one render behind after a drag; the getter always returns current positions.
     const freshProcessMap = getCanvasMapRef.current?.() ?? entry.processMap
@@ -249,7 +260,7 @@ export default function ProcessBuilder() {
     try {
       const now = new Date().toISOString()
       const viewer = (window as any).MagicAuth?.viewer?.()
-      const by = viewer?.email ?? entry.submittedBy ?? 'unknown'
+      const by = currentUserEmailRef.current || viewer?.email || entry.submittedBy || entry.author || 'unknown'
       const trackingPatch = appendLog(entry, 'submitted', by, now, lastSavedRef.current)
       const toolUrl = `${window.location.origin}${window.location.pathname}#/edit/${entry.id}`
       const submitted: ProcessEntry = {
