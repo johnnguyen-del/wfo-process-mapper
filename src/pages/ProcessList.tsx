@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import type { ProcessEntry, Domain, FolderEntry } from '@/lib/types'
-import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder, saveFolders } from '@/lib/storage'
-import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2, Search } from 'lucide-react'
+import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder, saveFolders, generateId } from '@/lib/storage'
+import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2, Search, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import FolderSidebar from '@/components/FolderSidebar'
@@ -58,6 +58,24 @@ export default function ProcessList() {
   async function handleReorderFolders(reordered: FolderEntry[]) {
     setFolders(reordered)
     await saveFolders(reordered)
+  }
+
+  function handleDuplicate(entry: ProcessEntry) {
+    const duplicate: ProcessEntry = {
+      ...structuredClone(entry),
+      id: generateId(),
+      processName: `Copy of ${entry.processName || 'Untitled'}`,
+      status: 'draft',
+      submittedAt: '',
+      submittedBy: '',
+      notionPageUrl: null,
+      author: undefined,
+      collaborators: undefined,
+      editLog: undefined,
+      deletedAt: undefined,
+    }
+    saveEntry(duplicate)
+    setEntries(prev => [duplicate, ...prev])
   }
 
   function handleAssignProcess(processId: string, folderId: string | null) {
@@ -241,6 +259,7 @@ export default function ProcessList() {
                       owner={owner}
                       currentUserEmail={currentUserEmail}
                       onDelete={handleDelete}
+                      onDuplicate={handleDuplicate}
                       onDragStart={(e, id) => {
                         e.dataTransfer.setData('process-id', id)
                         e.dataTransfer.effectAllowed = 'move'
@@ -261,6 +280,7 @@ export default function ProcessList() {
                     entry={entry}
                     owner={owner}
                     onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
                     onDragStart={(e, id) => {
                       e.dataTransfer.setData('process-id', id)
                       e.dataTransfer.effectAllowed = 'move'
@@ -296,14 +316,16 @@ function EntryRow({
   isTrash = false,
   onDelete,
   onRestore,
+  onDuplicate,
   onDragStart,
 }: {
   entry: ProcessEntry
   owner: boolean
-  currentUserEmail: string
+  currentUserEmail?: string
   isTrash?: boolean
   onDelete: (e: ProcessEntry) => void
   onRestore?: (e: ProcessEntry) => void
+  onDuplicate?: (e: ProcessEntry) => void
   onDragStart: (e: React.DragEvent, entryId: string) => void
 }) {
   return (
@@ -396,6 +418,17 @@ function EntryRow({
             <Edit className="w-3.5 h-3.5" />
           </Link>
         </Button>
+        {!isTrash && onDuplicate && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-muted-foreground hover:text-foreground"
+            onClick={() => onDuplicate(entry)}
+            title="Duplicate process"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </Button>
+        )}
         {isTrash ? (
           <>
             <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onRestore?.(entry)}>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, BarChart2, Clock, GitBranch, GitMerge, Maximize2, Minimize2 } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import { ArrowDown, ArrowRight, BarChart2, Clock, Download, GitBranch, GitMerge, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
@@ -306,6 +307,32 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     document.addEventListener('fullscreenchange', onFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
   }, [])
+
+  async function handleExportPng() {
+    const container = canvasContainerRef.current
+    if (!container) return
+    const reactFlowEl = container.querySelector('.react-flow') as HTMLElement | null
+    if (!reactFlowEl) return
+    try {
+      const canvas = await html2canvas(reactFlowEl, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      })
+      canvas.toBlob(blob => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `process-map.png`
+        a.click()
+        URL.revokeObjectURL(url)
+      }, 'image/png')
+    } catch (err) {
+      console.error('PNG export failed:', err)
+    }
+  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -693,6 +720,16 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           >
             {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
+          {!readOnly && rfNodes.length > 0 && (
+            <button
+              onClick={handleExportPng}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
+              title="Export canvas as PNG"
+            >
+              <Download className="w-3 h-3" />
+              PNG
+            </button>
+          )}
           <button
             onClick={() => setShowMetrics(s => !s)}
             className={cn(
