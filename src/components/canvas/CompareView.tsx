@@ -87,7 +87,7 @@ export default function CompareView({
             teamOwner={teamOwner}
             workato={workato}
             decagonL0={decagonL0}
-            direction={direction}
+            direction="LR"
             lineStyle={lineStyle}
             readOnly
             onChange={noOp}
@@ -117,7 +117,7 @@ export default function CompareView({
             teamOwner={teamOwner}
             workato={workato}
             decagonL0={decagonL0}
-            direction={direction}
+            direction="LR"
             lineStyle={lineStyle}
             readOnly
             onChange={noOp}
