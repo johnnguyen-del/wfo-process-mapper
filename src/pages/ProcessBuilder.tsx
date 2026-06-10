@@ -85,6 +85,10 @@ export default function ProcessBuilder() {
     save: (id: string, label: string, timeEstimate: string, lane: any, badge?: any, durationMinutes?: number, attachments?: any[], nodeColor?: string, locked?: boolean) => void
     delete: (id: string) => void
   } | null>(null)
+  // Per-panel handlers for Compare mode — keyed by panel ID ('current'|'interim'|'ideal')
+  const compareEditHandlersRef = useRef<Record<string, typeof editHandlerRef.current>>({
+    current: null, interim: null, ideal: null,
+  })
 
   // Seed history with the initial empty canvas state so the very first
   // canvas action is always undoable.
@@ -737,6 +741,14 @@ export default function ProcessBuilder() {
                 onCurrentChange={(map) => patch({ processMap: map })}
                 onInterimChange={(map) => patch({ interimMap: map })}
                 onIdealChange={(map) => patch({ optimizationMap: map })}
+                onNodeEdit={(node, panelId) => {
+                  // Swap editHandlerRef to the clicked panel's handlers before opening dialog
+                  editHandlerRef.current = compareEditHandlersRef.current[panelId] ?? null
+                  setExternalEditingNode(node)
+                }}
+                onRegisterPanelEditHandler={(panelId, handler) => {
+                  compareEditHandlersRef.current[panelId] = handler
+                }}
               />
             )}
           </div>

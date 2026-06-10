@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import ProcessCanvas, { LANE_COLORS, LANE_LABEL_COLORS } from './ProcessCanvas'
 import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner, SwimLane } from '@/lib/types'
+import type { Node } from '@xyflow/react'
 import { computeMetrics } from '@/lib/metrics'
 import { autoLayout } from '@/lib/export'
 import { cn } from '@/lib/utils'
@@ -22,6 +23,8 @@ interface CompareViewProps {
   onCurrentChange: (map: ProcessMap) => void
   onInterimChange: (map: ProcessMap) => void
   onIdealChange: (map: ProcessMap) => void
+  onNodeEdit?: (node: Node, panelId: string) => void
+  onRegisterPanelEditHandler?: (panelId: string, handler: any) => void
 }
 
 type PanelId = 'current' | 'interim' | 'ideal'
@@ -39,6 +42,7 @@ export default function CompareView({
   direction, lineStyle, teamOwner, workato, decagonL0,
   layoutKey, compareSplit, onCompareSplitChange, onLineStyleChange, onDirectionChange,
   onCurrentChange, onInterimChange, onIdealChange,
+  onNodeEdit, onRegisterPanelEditHandler,
 }: CompareViewProps) {
   const [showStats, setShowStats] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<PanelId>>(new Set())
@@ -179,6 +183,8 @@ export default function CompareView({
               layoutKey={panelLayoutKeys[id]}
               hideLegend
               onChange={onChanges[id]}
+              onNodeEdit={onNodeEdit ? (node) => onNodeEdit(node, id) : undefined}
+              onRegisterEditHandler={onRegisterPanelEditHandler ? (handler) => onRegisterPanelEditHandler(id, handler) : undefined}
               onRelayout={(dir) => {
                 // 1. Relayout nodes for the new direction
                 const map = maps[id]
