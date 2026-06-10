@@ -50,13 +50,15 @@ export default function StepNode({ data }: NodeProps) {
   const showTimes = (data as any).showTimes as boolean | undefined
   const badge = (data as any).badge as { status?: string; priority?: string } | undefined
   const durationMinutes = (data as any).durationMinutes as number | undefined
+  const sourcePos = (data as any).sourcePosition ?? Position.Right
+  const targetPos = (data as any).targetPosition ?? Position.Left
 
   return (
     <div className={cn('relative rounded-lg border-2 px-3 py-2 text-xs font-medium min-w-[110px] max-w-[160px] shadow-sm', color)}>
       {(data as any).locked && (
         <span className="absolute top-0.5 left-1 text-[9px] leading-none opacity-60" title="Locked">🔒</span>
       )}
-      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-gray-400" />
+      <Handle type="target" position={targetPos} className="!w-2 !h-2 !bg-gray-400" />
       {badge?.priority && (
         <span className={cn('absolute top-1 right-1 w-2 h-2 rounded-full', PRIORITY_COLORS[badge.priority] ?? '')} />
       )}
@@ -84,7 +86,7 @@ export default function StepNode({ data }: NodeProps) {
       {durationMinutes == null && (
         <span className="absolute bottom-0.5 right-1 text-[9px] text-amber-500" title="Duration not set">⏱</span>
       )}
-      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-gray-400" />
+      <Handle type="source" position={sourcePos} className="!w-2 !h-2 !bg-gray-400" />
     </div>
   )
 }

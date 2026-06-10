@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import ProcessCanvas from './ProcessCanvas'
-import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner } from '@/lib/types'
+import ProcessCanvas, { LANE_COLORS, LANE_LABEL_COLORS } from './ProcessCanvas'
+import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner, SwimLane } from '@/lib/types'
 import { computeMetrics } from '@/lib/metrics'
 
 interface CompareViewProps {
@@ -114,6 +114,7 @@ export default function CompareView({
               direction={direction}
               lineStyle={lineStyle}
               layoutKey={layoutKey}
+              hideLegend
               onChange={onChanges[id]}
               onRelayout={(dir) => onDirectionChange(dir)}
               onLineStyleChange={onLineStyleChange}
@@ -181,6 +182,30 @@ export default function CompareView({
           )}
         </div>
       )}
+
+      {/* Shared legend — shown once above all panels */}
+      <div className="border-b bg-muted/10 px-3 py-1.5 flex items-center gap-3 flex-wrap shrink-0 text-[10px]">
+        <span className="font-medium text-muted-foreground shrink-0">Legend:</span>
+        {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
+          <span key={lane} className="flex items-center gap-1 font-medium shrink-0" style={{ color: LANE_LABEL_COLORS[lane as SwimLane] }}>
+            <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane as SwimLane], border: `1.5px solid ${LANE_LABEL_COLORS[lane as SwimLane]}` }} />
+            {lane}
+          </span>
+        ))}
+        <span className="text-muted-foreground/30">|</span>
+        {[
+          { label: 'Start/End', color: '#f97316' },
+          { label: 'Step', color: '#3b82f6' },
+          { label: 'Decision', color: '#a855f7', diamond: true },
+          { label: 'Auto', color: '#10b981' },
+          { label: 'Comms', color: '#f59e0b' },
+        ].map(({ label, color, diamond }) => (
+          <span key={label} className="flex items-center gap-1 text-muted-foreground shrink-0">
+            <span className="w-2 h-2 inline-block shrink-0" style={{ backgroundColor: color, borderRadius: diamond ? 0 : 2, transform: diamond ? 'rotate(45deg)' : undefined }} />
+            {label}
+          </span>
+        ))}
+      </div>
 
       {/* Three panels */}
       <div className="flex flex-1 min-h-0">

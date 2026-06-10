@@ -108,6 +108,8 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
       attachments: n.attachments,
       nodeColor: n.nodeColor,
       locked: n.locked,
+      sourcePosition: sourcePos,
+      targetPosition: targetPos,
     },
   }))
 }
@@ -249,6 +251,7 @@ interface CanvasInnerProps {
   colorMode?: 'light' | 'dark'
   domain?: string
   initialHighlight?: Set<string>
+  hideLegend?: boolean
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -260,7 +263,7 @@ interface CanvasInnerProps {
   }) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, initialHighlight, hideLegend, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -674,35 +677,39 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
               {canvasLabel}
             </span>
           )}
-          {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
-            <span key={lane} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: LANE_LABEL_COLORS[lane] }}>
-              <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane], border: `1.5px solid ${LANE_LABEL_COLORS[lane]}` }} />
-              {lane}
-            </span>
-          ))}
-          {/* Separator + node type chips */}
-          <span className="text-muted-foreground/30 text-[10px] select-none">|</span>
-          {[
-            { label: 'Start/End', color: '#f97316' },
-            { label: 'Step', color: '#3b82f6' },
-            { label: 'Decision', color: '#a855f7', diamond: true },
-            { label: 'Auto', color: '#10b981' },
-            { label: 'Comms', color: '#f59e0b' },
-            { label: 'Lane', color: '#1d4ed8' },
-            { label: 'Note', color: '#fde047' },
-          ].map(({ label, color, diamond }) => (
-            <span key={label} className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
-              <span
-                className="w-2 h-2 inline-block shrink-0"
-                style={{
-                  backgroundColor: color,
-                  borderRadius: diamond ? 0 : 2,
-                  transform: diamond ? 'rotate(45deg)' : undefined,
-                }}
-              />
-              {label}
-            </span>
-          ))}
+          {!hideLegend && (
+            <>
+              {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
+                <span key={lane} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: LANE_LABEL_COLORS[lane] }}>
+                  <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane], border: `1.5px solid ${LANE_LABEL_COLORS[lane]}` }} />
+                  {lane}
+                </span>
+              ))}
+              {/* Separator + node type chips */}
+              <span className="text-muted-foreground/30 text-[10px] select-none">|</span>
+              {[
+                { label: 'Start/End', color: '#f97316' },
+                { label: 'Step', color: '#3b82f6' },
+                { label: 'Decision', color: '#a855f7', diamond: true },
+                { label: 'Auto', color: '#10b981' },
+                { label: 'Comms', color: '#f59e0b' },
+                { label: 'Lane', color: '#1d4ed8' },
+                { label: 'Note', color: '#fde047' },
+              ].map(({ label, color, diamond }) => (
+                <span key={label} className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                  <span
+                    className="w-2 h-2 inline-block shrink-0"
+                    style={{
+                      backgroundColor: color,
+                      borderRadius: diamond ? 0 : 2,
+                      transform: diamond ? 'rotate(45deg)' : undefined,
+                    }}
+                  />
+                  {label}
+                </span>
+              ))}
+            </>
+          )}
         </div>
         <div className="flex gap-2 shrink-0">
           <button
@@ -1003,6 +1010,7 @@ interface ProcessCanvasProps {
   colorMode?: 'light' | 'dark'
   domain?: string
   initialHighlight?: Set<string>
+  hideLegend?: boolean
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -1019,7 +1027,7 @@ interface ProcessCanvasProps {
   }) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, initialHighlight, hideLegend, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
   const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
@@ -1053,6 +1061,7 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
         domain={domain}
         initialHighlight={initialHighlight}
+        hideLegend={hideLegend}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}

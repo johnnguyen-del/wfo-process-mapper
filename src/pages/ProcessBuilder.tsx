@@ -696,7 +696,21 @@ export default function ProcessBuilder() {
                 compareSplit={compareSplit}
                 onCompareSplitChange={handleCompareSplitChange}
                 onLineStyleChange={setLineStyle}
-                onDirectionChange={(dir) => { setCanvasDirection(dir); setLayoutKey(k => k + 1) }}
+                onDirectionChange={(dir) => {
+                  setCanvasDirection(dir)
+                  setEntry(prev => {
+                    const relaidCurrent = autoLayout(prev.processMap.nodes, prev.processMap.edges, dir)
+                    const relaidInterim = prev.interimMap ? autoLayout(prev.interimMap.nodes, prev.interimMap.edges, dir) : undefined
+                    const relaidIdeal = prev.optimizationMap ? autoLayout(prev.optimizationMap.nodes, prev.optimizationMap.edges, dir) : undefined
+                    return {
+                      ...prev,
+                      processMap: { nodes: relaidCurrent, edges: prev.processMap.edges },
+                      ...(relaidInterim ? { interimMap: { nodes: relaidInterim, edges: prev.interimMap!.edges } } : {}),
+                      ...(relaidIdeal ? { optimizationMap: { nodes: relaidIdeal, edges: prev.optimizationMap!.edges } } : {}),
+                    }
+                  })
+                  setLayoutKey(k => k + 1)
+                }}
                 onCurrentChange={(map) => patch({ processMap: map })}
                 onInterimChange={(map) => patch({ interimMap: map })}
                 onIdealChange={(map) => patch({ optimizationMap: map })}
