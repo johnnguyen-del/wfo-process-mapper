@@ -43,15 +43,15 @@ export default function Landing() {
       <div className="bg-gradient-to-br from-blue-50 to-violet-50 dark:from-blue-950/30 dark:to-violet-950/30 border-b px-6 py-14 md:py-20">
         <div className="max-w-3xl mx-auto">
           <p className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-3">
-            WFO Banking Pod · Process Documentation
+            WFO · Process Documentation
           </p>
           <h1 className="text-3xl md:text-4xl font-extrabold leading-tight text-foreground mb-4">
             Map your operational processes.<br className="hidden md:block" />
             Understand every outcome.
           </h1>
           <p className="text-base text-muted-foreground max-w-xl leading-relaxed mb-8">
-            A guided tool for WFO Team Leads to document processes, build visual flow maps,
-            analyse outcomes, and submit directly to the Master Process Inventory in Notion.
+            A guided tool for teams to document processes, build visual flow maps,
+            analyse outcomes, and submit directly to the WFO Master Process Inventory in Notion.
           </p>
           <div className="flex flex-wrap gap-3 items-center">
             <Link
