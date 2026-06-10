@@ -1,10 +1,13 @@
+import { useMemo, useState } from 'react'
 import { computeMetrics } from '@/lib/metrics'
 import type { ProcessMap } from '@/lib/types'
 import { LANE_LABEL_COLORS } from './ProcessCanvas'
+import { findPaths, pathDuration, pathWorkSteps } from '@/lib/outcomeUtils'
 
 interface MetricsDashboardProps {
   processMap: ProcessMap
   onClose: () => void
+  onHighlight?: (nodeIds: Set<string>) => void
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
@@ -16,9 +19,12 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-export default function MetricsDashboard({ processMap, onClose }: MetricsDashboardProps) {
+export default function MetricsDashboard({ processMap, onClose, onHighlight }: MetricsDashboardProps) {
   const m = computeMetrics(processMap)
   const activeLanes = Object.entries(m.byLane).filter(([, v]) => v.count > 0)
+  const paths = useMemo(() => findPaths(processMap), [processMap])
+  const nodeMap = useMemo(() => new Map(processMap.nodes.map(n => [n.id, n])), [processMap])
+  const [showOutcomes, setShowOutcomes] = useState(false)
 
   return (
     <div className="absolute top-2 right-2 z-30 bg-background border rounded-lg shadow-lg p-4 w-72 text-xs">
@@ -51,6 +57,50 @@ export default function MetricsDashboard({ processMap, onClose }: MetricsDashboa
             </div>
           ))}
         </div>
+      )}
+      {paths.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowOutcomes(s => !s)}
+            className="flex items-center justify-between w-full font-medium text-muted-foreground mb-1.5 hover:text-foreground transition-colors"
+          >
+            <span>By outcome ({paths.length}{paths.length === 50 ? '+' : ''})</span>
+            <span>{showOutcomes ? '▲' : '▼'}</span>
+          </button>
+          {showOutcomes && (
+            <div className="space-y-1">
+              {paths.map((path, i) => {
+                const endNode = nodeMap.get(path[path.length - 1])
+                const dur = pathDuration(path, nodeMap)
+                const workSteps = pathWorkSteps(path)
+                return (
+                  <button
+                    key={path.join('-')}
+                    onClick={() => onHighlight?.(new Set(path))}
+                    className="w-full text-left px-2 py-1.5 rounded border hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="font-medium">Outcome {i + 1}: {endNode?.label ?? 'End'}</div>
+                    <div className="text-muted-foreground text-[10px] mt-0.5">
+                      {workSteps} step{workSteps !== 1 ? 's' : ''}
+                      {dur > 0 ? ` · ${dur} min` : ''}
+                    </div>
+                  </button>
+                )
+              })}
+              {onHighlight && (
+                <button
+                  onClick={() => onHighlight(new Set())}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline mt-1"
+                >
+                  Clear highlight
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {paths.length === 0 && m.totalTouchpoints > 0 && (
+        <p className="text-muted-foreground text-center py-2 mt-2">Add Start and End nodes to see outcome breakdown</p>
       )}
       {m.totalTouchpoints === 0 && (
         <p className="text-muted-foreground text-center py-2">Add step or decision nodes to see metrics</p>

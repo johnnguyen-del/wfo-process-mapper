@@ -31,6 +31,8 @@ const STICKY_COLORS = [
 
 interface NodeEditDialogProps {
   node: Node
+  /** When true, renders as a full-panel block (no absolute float) for panel-overlay mode */
+  inline?: boolean
   onSave: (
     id: string,
     label: string,
@@ -46,7 +48,7 @@ interface NodeEditDialogProps {
   onClose: () => void
 }
 
-export default function NodeEditDialog({ node, onSave, onDelete, onClose }: NodeEditDialogProps) {
+export default function NodeEditDialog({ node, inline = false, onSave, onDelete, onClose }: NodeEditDialogProps) {
   const [label, setLabel] = useState((node.data as any).label ?? '')
   const [timeEstimate, setTimeEstimate] = useState((node.data as any).timeEstimate ?? '')
   const [lane, setLane] = useState<SwimLane>((node.data as any).lane ?? 'CS')
@@ -66,7 +68,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
   const isStartEnd = node.type === 'start' || node.type === 'end'
 
   return (
-    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-xl shadow-xl p-4 w-80">
+    <div className={inline ? 'p-4 w-full' : 'absolute bottom-16 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-xl shadow-xl p-4 w-80'}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-semibold">Edit node</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">

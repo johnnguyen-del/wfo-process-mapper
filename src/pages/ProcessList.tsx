@@ -15,22 +15,20 @@ const TIER_COLORS = {
   '': 'bg-gray-100 text-gray-500',
 }
 
-// Owner check — same pattern as PlaybookStudio
-function isOwner(): boolean {
-  try {
-    return (window as any).MagicAuth?.viewer?.()?.isOwner === true
-  } catch {
-    return false
-  }
-}
-
 export default function ProcessList() {
   const [entries, setEntries] = useState<ProcessEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [owner] = useState(isOwner)
-  const [currentUserEmail] = useState<string>(() =>
-    (window as any).MagicAuth?.viewer?.()?.email ?? ''
-  )
+  const [owner, setOwner] = useState(false)
+  const [currentUserEmail, setCurrentUserEmail] = useState('')
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const viewer = await (window as any).MagicAuth?.viewer?.()
+        if (viewer?.email) setCurrentUserEmail(viewer.email)
+        if (viewer?.isOwner) setOwner(true)
+      } catch {}
+    })()
+  }, [])
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [query, setQuery] = useState('')

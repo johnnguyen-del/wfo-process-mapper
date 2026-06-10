@@ -247,13 +247,20 @@ interface CanvasInnerProps {
   canvasLabel?: string
   readOnly?: boolean
   colorMode?: 'light' | 'dark'
+  domain?: string
+  initialHighlight?: Set<string>
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
   onRegisterGetter?: (getter: () => ProcessMap) => void
+  onNodeEdit?: (node: Node) => void
+  onRegisterEditHandler?: (handler: {
+    save: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  }) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, onChange, onRelayout, onLineStyleChange, onRegisterGetter }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -262,7 +269,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showTimes, setShowTimes] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
   const [showOutcomes, setShowOutcomes] = useState(false)
-  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(
+    () => initialHighlight && initialHighlight.size > 0 ? new Set(initialHighlight) : new Set()
+  )
+  const [isolateMode, setIsolateMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [editingEdge, setEditingEdge] = useState<{
     id: string
@@ -291,6 +301,15 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
       nodes: fromRfNodes(rfNodesRef.current),
       edges: fromRfEdges(rfEdgesRef.current),
     }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register save/delete handlers so ProcessBuilder can call back into CanvasInner
+  // when it owns the NodeEditDialog (external edit mode via onNodeEdit prop).
+  useEffect(() => {
+    onRegisterEditHandler?.({
+      save: handleEditSave,
+      delete: (id: string) => { handleNodeDelete(id) },
+    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFullscreen() {
@@ -443,17 +462,27 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfEdges(toRfEdges(processMap.edges, lineStyle))
   }, [lineStyle, processMap.edges])
 
-  // Dim non-highlighted nodes when a path is selected
+  // Dim/hide non-highlighted nodes when a path is selected
   useEffect(() => {
     if (highlightedNodes.size === 0) {
-      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1 } })))
+      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1, pointerEvents: undefined } })))
+      setIsolateMode(false)
+    } else if (isolateMode) {
+      setRfNodes(prev => prev.map(n => ({
+        ...n,
+        style: {
+          ...n.style,
+          opacity: highlightedNodes.has(n.id) ? 1 : 0,
+          pointerEvents: highlightedNodes.has(n.id) ? undefined : 'none' as const,
+        },
+      })))
     } else {
       setRfNodes(prev => prev.map(n => ({
         ...n,
         style: { ...n.style, opacity: highlightedNodes.has(n.id) ? 1 : 0.2 },
       })))
     }
-  }, [highlightedNodes])
+  }, [highlightedNodes, isolateMode])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -521,7 +550,11 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   function handleNodeDoubleClick(_e: React.MouseEvent, node: Node) {
     // Double-click opens edit dialog — single click is used for selection
     if (!node.id.startsWith('lane-')) {
-      setEditingNode(node)
+      if (onNodeEdit) {
+        onNodeEdit(node)
+      } else {
+        setEditingNode(node)
+      }
     }
   }
 
@@ -745,7 +778,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           </button>
           {!readOnly && (
             <button
-              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) setHighlightedNodes(new Set()) }}
+              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) { setHighlightedNodes(new Set()); setIsolateMode(false) } }}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
                 showOutcomes
@@ -781,13 +814,14 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         onMouseLeave={() => { mousePosRef.current = null }}
       >
         {showMetrics && (
-          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
+          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} onHighlight={setHighlightedNodes} />
         )}
         {showOutcomes && (
           <OutcomePanel
             processMap={processMap}
             onHighlight={setHighlightedNodes}
-            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()) }}
+            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()); setIsolateMode(false) }}
+            onIsolate={setIsolateMode}
           />
         )}
         {editingEdge && (
@@ -916,8 +950,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
           deleteKeyCode={readOnly ? null : 'Delete'}
           multiSelectionKeyCode="Shift"
+          selectionKeyCode="Shift"
           selectionOnDrag
-          panOnDrag={[1, 2]}
+          panOnDrag={[0, 1, 2]}
+          panOnScroll={true}
           onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
           colorMode={colorMode ?? 'light'}
           style={{ background: 'transparent' }}
@@ -939,7 +975,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
       </div>
 
-      <MapQualityChecklist processMap={processMap} activeLanes={lanes} />
+      <MapQualityChecklist processMap={processMap} activeLanes={lanes} domain={domain} />
 
       {editingNode && (
         <NodeEditDialog
@@ -965,6 +1001,8 @@ interface ProcessCanvasProps {
   canvasLabel?: string
   readOnly?: boolean
   colorMode?: 'light' | 'dark'
+  domain?: string
+  initialHighlight?: Set<string>
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -972,9 +1010,16 @@ interface ProcessCanvasProps {
   // Registers a getter that ProcessBuilder can call at save time to read
   // the current canvas state directly from rfNodes, bypassing entry.processMap
   onRegisterGetter?: (getter: () => ProcessMap) => void
+  /** When provided, CanvasInner will call this instead of opening its own dialog */
+  onNodeEdit?: (node: Node) => void
+  /** Registers save/delete handlers so the external dialog owner can call back into CanvasInner */
+  onRegisterEditHandler?: (handler: {
+    save: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  }) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
   const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
@@ -1006,10 +1051,14 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         canvasLabel={canvasLabel}
         readOnly={readOnly}
         colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
+        domain={domain}
+        initialHighlight={initialHighlight}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
         onRegisterGetter={onRegisterGetter}
+        onNodeEdit={onNodeEdit}
+        onRegisterEditHandler={onRegisterEditHandler}
       />
     </ReactFlowProvider>
   )

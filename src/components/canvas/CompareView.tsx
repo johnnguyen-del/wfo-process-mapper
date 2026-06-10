@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import ProcessCanvas from './ProcessCanvas'
 import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner } from '@/lib/types'
+import { computeMetrics } from '@/lib/metrics'
 
 interface CompareViewProps {
   currentMap: ProcessMap
@@ -25,6 +26,13 @@ export default function CompareView({
   compareSplit,
   onCompareSplitChange,
 }: CompareViewProps) {
+  const [showStats, setShowStats] = useState(false)
+
+  const currentMetrics = useMemo(() => computeMetrics(currentMap), [currentMap])
+  const idealMetrics = useMemo(() => computeMetrics(optimizationMap), [optimizationMap])
+
+  const hasData = currentMetrics.totalTouchpoints > 0 || idealMetrics.totalTouchpoints > 0
+
   const noOp = () => {}
   const containerRef = useRef<HTMLDivElement>(null)
   const splitDragCleanupRef = useRef<(() => void) | null>(null)
@@ -72,7 +80,55 @@ export default function CompareView({
   }, [])
 
   return (
-    <div ref={containerRef} className="flex h-full">
+    <div className="flex flex-col h-full">
+    {hasData && (
+      <div className="border-b bg-muted/10 shrink-0">
+        <button
+          onClick={() => setShowStats(s => !s)}
+          className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span>Statistical Comparison</span>
+          <span>{showStats ? '▲' : '▼'}</span>
+        </button>
+        {showStats && (
+          <div className="px-4 pb-3">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-muted-foreground">
+                  <th className="text-left py-1 pr-4 font-medium">Metric</th>
+                  <th className="text-right py-1 pr-4 font-medium">Current</th>
+                  <th className="text-right py-1 font-medium text-violet-600">✦ Ideal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Touchpoints', currentMetrics.totalTouchpoints, idealMetrics.totalTouchpoints],
+                  ['Transitions', currentMetrics.totalTransitions, idealMetrics.totalTransitions],
+                  ['Total Duration (min)', currentMetrics.totalDurationMinutes || '—', idealMetrics.totalDurationMinutes || '—'],
+                  ['Avg per Step (min)', currentMetrics.totalTouchpoints > 0 ? currentMetrics.avgDurationMinutes : '—', idealMetrics.totalTouchpoints > 0 ? idealMetrics.avgDurationMinutes : '—'],
+                ].map(([label, cur, ideal]) => (
+                  <tr key={String(label)} className="border-t">
+                    <td className="py-1.5 pr-4 text-muted-foreground">{label}</td>
+                    <td className="py-1.5 pr-4 text-right tabular-nums font-medium">{String(cur)}</td>
+                    <td className={`py-1.5 text-right tabular-nums font-medium ${
+                      typeof cur === 'number' && typeof ideal === 'number' && ideal < cur
+                        ? 'text-green-600'
+                        : typeof cur === 'number' && typeof ideal === 'number' && ideal > cur
+                        ? 'text-red-500'
+                        : 'text-violet-600'
+                    }`}>
+                      {String(ideal)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[10px] text-muted-foreground mt-2">Green = ideal improves on current · Red = ideal has more</p>
+          </div>
+        )}
+      </div>
+    )}
+    <div ref={containerRef} className="flex flex-1 min-h-0">
       {/* Left: Current Flow */}
       <div
         className="flex flex-col overflow-hidden"
@@ -87,7 +143,7 @@ export default function CompareView({
             teamOwner={teamOwner}
             workato={workato}
             decagonL0={decagonL0}
-            direction={direction}
+            direction="LR"
             lineStyle={lineStyle}
             readOnly
             onChange={noOp}
@@ -117,7 +173,7 @@ export default function CompareView({
             teamOwner={teamOwner}
             workato={workato}
             decagonL0={decagonL0}
-            direction={direction}
+            direction="LR"
             lineStyle={lineStyle}
             readOnly
             onChange={noOp}
@@ -126,6 +182,7 @@ export default function CompareView({
           />
         </div>
       </div>
+    </div>
     </div>
   )
 }

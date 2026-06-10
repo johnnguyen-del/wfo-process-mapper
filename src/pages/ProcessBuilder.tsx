@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Node } from '@xyflow/react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sparkles, FormInput, CheckCircle, ExternalLink, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import CommsStep from '@/components/wizard/CommsStep'
 import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
+import NodeEditDialog from '@/components/canvas/NodeEditDialog'
 import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
 import DetailsTab from '@/components/wizard/DetailsTab'
@@ -77,6 +79,13 @@ export default function ProcessBuilder() {
   const historyRef = useRef<ProcessMap[]>([])
   const historyIdxRef = useRef<number>(-1)
 
+  // External NodeEditDialog — overlays the left panel instead of the canvas
+  const [externalEditingNode, setExternalEditingNode] = useState<Node | null>(null)
+  const editHandlerRef = useRef<{
+    save: (id: string, label: string, timeEstimate: string, lane: any, badge?: any, durationMinutes?: number, attachments?: any[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  } | null>(null)
+
   // Seed history with the initial empty canvas state so the very first
   // canvas action is always undoable.
   useEffect(() => {
@@ -91,6 +100,18 @@ export default function ProcessBuilder() {
     if (historyRef.current.length > 50) historyRef.current.shift()
     historyIdxRef.current = historyRef.current.length - 1
   }
+
+  // Capture the authenticated user email. viewer() returns a Promise so we
+  // must await it — synchronous access always returns undefined.
+  const currentUserEmailRef = useRef('')
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const viewer = await (window as any).MagicAuth?.viewer?.()
+        if (viewer?.email) currentUserEmailRef.current = viewer.email
+      } catch {}
+    })()
+  }, [])
 
   const handleSaveRef = useRef<() => void>(() => {})
   const [step, setStep] = useState(0)
@@ -119,6 +140,16 @@ export default function ProcessBuilder() {
   const justAutoSavedRef = useRef(false)
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [autoSaving, setAutoSaving] = useState(false)
+
+  const [searchParams] = useSearchParams()
+
+  // Read path highlight from URL — only on mount, intentionally empty deps
+  const initialHighlight = useMemo(() => {
+    const pathParam = searchParams.get('path')
+    if (!pathParam) return undefined
+    const ids = pathParam.split(',').filter(Boolean)
+    return ids.length > 0 ? new Set(ids) : undefined
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (id) {
@@ -217,7 +248,7 @@ export default function ProcessBuilder() {
 
   function handleSave() {
     const now = new Date().toISOString()
-    const by = (window as any).MagicAuth?.viewer?.()?.email ?? 'unknown'
+    const by = currentUserEmailRef.current || entry.author || 'unknown'
     // Read fresh positions directly from CanvasInner's rfNodes state.
     // entry.processMap can be one render behind after a drag; the getter always returns current positions.
     const freshProcessMap = getCanvasMapRef.current?.() ?? entry.processMap
@@ -239,8 +270,8 @@ export default function ProcessBuilder() {
     setSubmitting(true)
     try {
       const now = new Date().toISOString()
-      const viewer = (window as any).MagicAuth?.viewer?.()
-      const by = viewer?.email ?? entry.submittedBy ?? 'unknown'
+      const viewer = await (window as any).MagicAuth?.viewer?.()
+      const by = currentUserEmailRef.current || viewer?.email || entry.submittedBy || entry.author || 'unknown'
       const trackingPatch = appendLog(entry, 'submitted', by, now, lastSavedRef.current)
       const toolUrl = `${window.location.origin}${window.location.pathname}#/edit/${entry.id}`
       const submitted: ProcessEntry = {
@@ -448,7 +479,7 @@ export default function ProcessBuilder() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Form / AI tabs */}
         <div
-          className="border-r flex flex-col overflow-hidden shrink-0"
+          className="relative border-r flex flex-col overflow-hidden shrink-0"
           style={{ width: leftWidth, minWidth: 280 }}
         >
           {/* Tab bar — same pattern as PlaybookStudio's Visual/DSL/Chat tabs */}
@@ -519,6 +550,25 @@ export default function ProcessBuilder() {
               </div>
             </>
           )}
+
+          {/* Node edit overlay — sits over the left panel, canvas stays fully visible */}
+          {externalEditingNode && (
+            <div className="absolute inset-0 z-50 bg-background border-r overflow-y-auto">
+              <NodeEditDialog
+                node={externalEditingNode}
+                inline
+                onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked) => {
+                  editHandlerRef.current?.save(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked)
+                  setExternalEditingNode(null)
+                }}
+                onDelete={() => {
+                  editHandlerRef.current?.delete(externalEditingNode.id)
+                  setExternalEditingNode(null)
+                }}
+                onClose={() => setExternalEditingNode(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Indigo drag handle — Form ↔ Canvas */}
@@ -547,11 +597,15 @@ export default function ProcessBuilder() {
                 direction={canvasDirection}
                 lineStyle={lineStyle}
                 canvasLabel="Current Flow"
+                domain={entry.domain || undefined}
+                initialHighlight={initialHighlight}
                 onChange={(map) => patch({ processMap: map })}
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}
                 layoutKey={layoutKey}
                 onRegisterGetter={(getter) => { getCanvasMapRef.current = getter }}
+                onNodeEdit={(node) => setExternalEditingNode(node)}
+                onRegisterEditHandler={(handler) => { editHandlerRef.current = handler }}
               />
             )}
             {viewMode === 'optimization' && (
@@ -564,6 +618,7 @@ export default function ProcessBuilder() {
                   direction={canvasDirection}
                   lineStyle={lineStyle}
                   canvasLabel="Ideal Flow"
+                  domain={entry.domain || undefined}
                   onChange={(map) => patch({ optimizationMap: map })}
                   onRelayout={handleOptimizationRelayout}
                   onLineStyleChange={setLineStyle}
