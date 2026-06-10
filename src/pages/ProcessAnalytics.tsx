@@ -30,7 +30,7 @@ export default function ProcessAnalytics() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    loadFolders().then(setFolders)
+    loadFolders().then(setFolders).catch(() => {})
     listEntries().then(entries => {
       setRows(
         entries.map(entry => {
