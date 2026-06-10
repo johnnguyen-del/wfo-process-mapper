@@ -1,35 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ProcessMap } from '@/lib/types'
-
-// DFS to find all paths from start nodes to end nodes
-// Returns array of node-ID paths
-function findPaths(map: ProcessMap): string[][] {
-  const adj = new Map<string, string[]>()
-  map.edges.forEach(e => {
-    if (!adj.has(e.source)) adj.set(e.source, [])
-    adj.get(e.source)!.push(e.target)
-  })
-
-  const startIds = map.nodes.filter(n => n.type === 'start').map(n => n.id)
-  const endSet = new Set(map.nodes.filter(n => n.type === 'end').map(n => n.id))
-  const paths: string[][] = []
-
-  function dfs(nodeId: string, path: string[], visited: Set<string>) {
-    if (visited.has(nodeId)) return         // cycle guard
-    if (paths.length >= 50) return          // safety cap
-    if (endSet.has(nodeId)) {
-      paths.push([...path, nodeId])
-      return
-    }
-    visited.add(nodeId)
-    for (const next of adj.get(nodeId) ?? []) {
-      dfs(next, [...path, nodeId], new Set(visited))
-    }
-  }
-
-  startIds.forEach(s => dfs(s, [], new Set()))
-  return paths
-}
+import { findPaths, pathDuration, pathWorkSteps } from '@/lib/outcomeUtils'
 
 interface OutcomePanelProps {
   processMap: ProcessMap
@@ -45,10 +16,6 @@ export default function OutcomePanel({ processMap, onHighlight, onClose, onIsola
   const [isolateMode, setIsolateMode] = useState(false)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState<Set<number>>(new Set())
-
-  function pathDuration(path: string[]): number {
-    return path.reduce((sum, id) => sum + (nodeMap.get(id)?.durationMinutes ?? 0), 0)
-  }
 
   return (
     <div className="absolute right-2 top-12 z-30 bg-background border rounded-lg shadow-lg p-3 w-72 max-h-[60vh] overflow-y-auto text-xs">
@@ -77,8 +44,8 @@ export default function OutcomePanel({ processMap, onHighlight, onClose, onIsola
 
       {paths.map((path, i) => {
         const endNode = nodeMap.get(path[path.length - 1])
-        const dur = pathDuration(path)
-        const workSteps = Math.max(0, path.length - 2)
+        const dur = pathDuration(path, nodeMap)
+        const workSteps = pathWorkSteps(path)
         const isSelected = selectedPaths.has(i)
 
         if (compareMode) {
@@ -129,8 +96,8 @@ export default function OutcomePanel({ processMap, onHighlight, onClose, onIsola
       {compareMode && selectedPaths.size === 2 && (() => {
         const [idxA, idxB] = [...selectedPaths].sort((a, b) => a - b)
         const pathA = paths[idxA], pathB = paths[idxB]
-        const durA = pathDuration(pathA), durB = pathDuration(pathB)
-        const stepsA = Math.max(0, pathA.length - 2), stepsB = Math.max(0, pathB.length - 2)
+        const durA = pathDuration(pathA, nodeMap), durB = pathDuration(pathB, nodeMap)
+        const stepsA = pathWorkSteps(pathA), stepsB = pathWorkSteps(pathB)
         return (
           <div className="mt-2 border rounded p-2 bg-muted/20 text-xs">
             <div className="font-semibold mb-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">Comparison</div>
