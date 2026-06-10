@@ -74,6 +74,16 @@ export default function ProcessBuilder() {
   // Direct getter into CanvasInner's live rfNodes state — bypasses the
   // entry.processMap sync chain which can be stale at save time.
   const getCanvasMapRef = useRef<(() => ProcessMap) | null>(null)
+  const historyRef = useRef<ProcessMap[]>([])
+  const historyIdxRef = useRef<number>(-1)
+
+  function pushHistory(map: ProcessMap) {
+    historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1)
+    historyRef.current.push(structuredClone(map))
+    if (historyRef.current.length > 50) historyRef.current.shift()
+    historyIdxRef.current = historyRef.current.length - 1
+  }
+
   const handleSaveRef = useRef<() => void>(() => {})
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
@@ -108,6 +118,7 @@ export default function ProcessBuilder() {
         if (loaded) {
           setEntry(loaded)
           lastSavedRef.current = loaded
+          if (loaded.processMap) pushHistory(loaded.processMap)
         }
       })
     }
@@ -153,6 +164,39 @@ export default function ProcessBuilder() {
   }, [])
 
   useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        (e.target as HTMLElement)?.isContentEditable
+      if (isEditable) return
+
+      const isUndo = (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey
+      const isRedo = (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))
+
+      if (isUndo) {
+        e.preventDefault()
+        if (historyIdxRef.current <= 0) return
+        historyIdxRef.current--
+        const map = historyRef.current[historyIdxRef.current]
+        setEntry(prev => ({ ...prev, processMap: structuredClone(map) }))
+        setLayoutKey(k => k + 1)
+      }
+
+      if (isRedo) {
+        e.preventDefault()
+        if (historyIdxRef.current >= historyRef.current.length - 1) return
+        historyIdxRef.current++
+        const map = historyRef.current[historyIdxRef.current]
+        setEntry(prev => ({ ...prev, processMap: structuredClone(map) }))
+        setLayoutKey(k => k + 1)
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
     return () => {
       leftDragCleanupRef.current?.()
     }
@@ -161,6 +205,7 @@ export default function ProcessBuilder() {
   function patch(update: Partial<ProcessEntry>) {
     setEntry((prev) => {
       const next = { ...prev, ...update }
+      if (update.processMap) pushHistory(update.processMap)
       return next
     })
   }
