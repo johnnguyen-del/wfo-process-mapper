@@ -781,7 +781,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         onMouseLeave={() => { mousePosRef.current = null }}
       >
         {showMetrics && (
-          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
+          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} onHighlight={setHighlightedNodes} />
         )}
         {showOutcomes && (
           <OutcomePanel
