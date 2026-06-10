@@ -2,17 +2,23 @@ import { useState } from 'react'
 import type { ProcessMap, SwimLane } from '@/lib/types'
 import { CheckCircle, XCircle, MinusCircle, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { loadIdealFlowReferences } from '@/lib/idealFlows'
+import type { IdealFlowReference } from '@/lib/idealFlows'
 
 interface MapQualityChecklistProps {
   processMap: ProcessMap
   activeLanes: SwimLane[]
+  domain?: string
 }
 
-export default function MapQualityChecklist({ processMap, activeLanes }: MapQualityChecklistProps) {
+export default function MapQualityChecklist({ processMap, activeLanes, domain }: MapQualityChecklistProps) {
   // Hooks must be first — before any derived values or early returns
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [activeTab, setActiveTab] = useState<'ai' | 'reference'>('ai')
+  const [references, setReferences] = useState<IdealFlowReference[]>([])
+  const [loadingRefs, setLoadingRefs] = useState(false)
 
   const nodes = processMap.nodes
   const populatedLanes = new Set(nodes.map((n) => n.lane))
@@ -99,6 +105,16 @@ export default function MapQualityChecklist({ processMap, activeLanes }: MapQual
     }
   }
 
+  async function fetchReferences() {
+    setLoadingRefs(true)
+    try {
+      const refs = await loadIdealFlowReferences(domain)
+      setReferences(refs)
+    } finally {
+      setLoadingRefs(false)
+    }
+  }
+
   return (
     <div className="border-t shrink-0">
       {/* Existing checklist bar */}
@@ -125,12 +141,12 @@ export default function MapQualityChecklist({ processMap, activeLanes }: MapQual
             </div>
           ))}
         </div>
-        {/* AI Suggestions button — right side */}
+        {/* Optimization Suggestions button — right side */}
         <button
-          onClick={loadingSuggestions ? undefined : (showSuggestions ? () => setShowSuggestions(false) : fetchSuggestions)}
+          onClick={loadingSuggestions ? undefined : (showSuggestions ? () => setShowSuggestions(false) : () => { setShowSuggestions(true); fetchSuggestions(); fetchReferences() })}
           disabled={loadingSuggestions}
           className="flex items-center gap-1.5 text-[11px] text-violet-600 hover:text-violet-700 font-medium shrink-0 disabled:opacity-50"
-          title="Get AI optimization suggestions"
+          title="Get optimization suggestions"
         >
           {loadingSuggestions
             ? <Loader2 className="w-3 h-3 animate-spin" />
@@ -139,21 +155,79 @@ export default function MapQualityChecklist({ processMap, activeLanes }: MapQual
         </button>
       </div>
 
-      {/* AI Suggestions panel */}
+      {/* Suggestions panel — tabbed: AI + Reference */}
       {showSuggestions && (
         <div className="bg-violet-50 border-t border-violet-100 px-4 py-3">
-          <div className="text-[11px] font-semibold text-violet-700 mb-2">✦ AI Optimization Suggestions</div>
-          {loadingSuggestions ? (
-            <div className="text-[11px] text-violet-500">Analyzing your process map…</div>
-          ) : (
-            <ul className="space-y-1">
-              {suggestions.map((s, i) => (
-                <li key={i} className="flex gap-2 text-[11px] text-violet-800">
-                  <span className="text-violet-400 shrink-0">•</span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
+          {/* Tab bar */}
+          <div className="flex gap-1 mb-2 border-b border-violet-200">
+            <button
+              onClick={() => setActiveTab('ai')}
+              className={cn(
+                'text-xs px-2 py-1 border-b-2 transition-colors',
+                activeTab === 'ai'
+                  ? 'border-violet-500 text-violet-600 font-medium'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              ✦ AI
+            </button>
+            <button
+              onClick={() => setActiveTab('reference')}
+              className={cn(
+                'text-xs px-2 py-1 border-b-2 transition-colors',
+                activeTab === 'reference'
+                  ? 'border-violet-500 text-violet-600 font-medium'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              📚 Reference ({references.length})
+            </button>
+            <button
+              onClick={() => setShowSuggestions(false)}
+              className="ml-auto text-muted-foreground hover:text-foreground text-xs leading-none pb-1"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* AI tab */}
+          {activeTab === 'ai' && (
+            loadingSuggestions ? (
+              <div className="text-[11px] text-violet-500">Analyzing your process map…</div>
+            ) : (
+              <ul className="space-y-1">
+                {suggestions.map((s, i) => (
+                  <li key={i} className="flex gap-1.5 text-[11px] text-violet-800">
+                    <span className="text-violet-400 shrink-0">•</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {/* Reference tab */}
+          {activeTab === 'reference' && (
+            loadingRefs ? (
+              <div className="text-[11px] text-muted-foreground">Loading reference flows…</div>
+            ) : references.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                No ideal flows found{domain ? ` for ${domain}` : ''}. Create an Ideal Flow (✦ Ideal mode) on any process to add it as a reference.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {references.map(ref => (
+                  <a
+                    key={ref.id}
+                    href={`#/edit/${ref.id}`}
+                    className="block border rounded p-2 hover:bg-muted/40 transition-colors text-[11px]"
+                  >
+                    <div className="font-medium truncate">{ref.processName}</div>
+                    <div className="text-muted-foreground">{ref.domain} · {ref.nodeCount} steps in ideal flow</div>
+                  </a>
+                ))}
+              </div>
+            )
           )}
         </div>
       )}

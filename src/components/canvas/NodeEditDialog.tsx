@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, X } from 'lucide-react'
 import type { KbLink, SwimLane, ProcessNode } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import KbLinksPanel from './KbLinksPanel'
 
 const LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
@@ -30,6 +31,8 @@ const STICKY_COLORS = [
 
 interface NodeEditDialogProps {
   node: Node
+  /** When true, renders as a full-panel block (no absolute float) for panel-overlay mode */
+  inline?: boolean
   onSave: (
     id: string,
     label: string,
@@ -38,13 +41,14 @@ interface NodeEditDialogProps {
     badge?: ProcessNode['badge'],
     durationMinutes?: number,
     attachments?: KbLink[],
-    nodeColor?: string
+    nodeColor?: string,
+    locked?: boolean
   ) => void
   onDelete: () => void
   onClose: () => void
 }
 
-export default function NodeEditDialog({ node, onSave, onDelete, onClose }: NodeEditDialogProps) {
+export default function NodeEditDialog({ node, inline = false, onSave, onDelete, onClose }: NodeEditDialogProps) {
   const [label, setLabel] = useState((node.data as any).label ?? '')
   const [timeEstimate, setTimeEstimate] = useState((node.data as any).timeEstimate ?? '')
   const [lane, setLane] = useState<SwimLane>((node.data as any).lane ?? 'CS')
@@ -57,13 +61,14 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
   )
   const [attachments, setAttachments] = useState<KbLink[]>((node.data as any).attachments ?? [])
   const [nodeColor, setNodeColor] = useState<string>((node.data as any).nodeColor ?? '')
+  const [locked, setLocked] = useState<boolean>((node.data as any).locked ?? false)
   const isSwimlane = node.type === 'swimlane'
   const isSticky = node.type === 'sticky'
 
   const isStartEnd = node.type === 'start' || node.type === 'end'
 
   return (
-    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-xl shadow-xl p-4 w-80">
+    <div className={inline ? 'p-4 w-full' : 'absolute bottom-16 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-xl shadow-xl p-4 w-80'}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-semibold">Edit node</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -153,6 +158,21 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
                 className="w-full border rounded px-2 py-1.5 text-sm"
               />
             </div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">Lock position</label>
+              <button
+                type="button"
+                onClick={() => setLocked(l => !l)}
+                className={cn(
+                  'text-xs px-2 py-1 rounded border transition-colors',
+                  locked
+                    ? 'bg-amber-100 border-amber-300 text-amber-700'
+                    : 'bg-background border-border text-muted-foreground hover:border-foreground/40'
+                )}
+              >
+                {locked ? '🔒 Locked' : '🔓 Unlocked'}
+              </button>
+            </div>
           </>
         )}
 
@@ -190,11 +210,18 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
       </div>
 
       <div className="flex gap-2 mt-4">
-        <Button variant="destructive" size="sm" onClick={onDelete} className="gap-1">
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onDelete}
+          className="gap-1"
+          disabled={locked}
+          title={locked ? 'Unlock node before deleting' : undefined}
+        >
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined, attachments.length > 0 ? attachments : undefined, nodeColor || undefined)} className="flex-1">
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined, attachments.length > 0 ? attachments : undefined, nodeColor || undefined, locked || undefined)} className="flex-1">
           Save
         </Button>
       </div>

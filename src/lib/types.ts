@@ -47,6 +47,7 @@ export interface ProcessNode {
   nodeColor?: string    // hex color — swimlane background or sticky note colour
   nodeWidth?: number    // px — stored after NodeResizer drag (swimlane only)
   nodeHeight?: number   // px — stored after NodeResizer drag (swimlane only)
+  locked?: boolean     // when true: not draggable, not deletable
 }
 
 export interface ProcessEdge {
@@ -115,6 +116,7 @@ export interface ProcessEntry {
   author?: string            // email — set on first save, never overwritten
   collaborators?: string[]   // all editors deduped
   editLog?: EditLogEntry[]   // newest first
+  deletedAt?: string         // ISO timestamp — set on soft delete, absent = active
   status: 'draft' | 'submitted'
 }
 

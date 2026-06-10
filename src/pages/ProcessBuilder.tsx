@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Node } from '@xyflow/react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sparkles, FormInput, CheckCircle, ExternalLink, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,10 +13,11 @@ import CommsStep from '@/components/wizard/CommsStep'
 import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
+import NodeEditDialog from '@/components/canvas/NodeEditDialog'
 import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
 import DetailsTab from '@/components/wizard/DetailsTab'
-import { emptyEntry, type ProcessEntry, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry, type EditLogEntry } from '@/lib/types'
+import { emptyEntry, type ProcessEntry, type ProcessMap, type CanvasDirection, type LineStyle, type ViewMode, type FolderEntry, type EditLogEntry } from '@/lib/types'
 import { generateId, loadEntry, saveEntry, loadFolders } from '@/lib/storage'
 import { submitToNotion } from '@/lib/notion'
 import { autoLayout } from '@/lib/export'
@@ -71,6 +73,47 @@ export default function ProcessBuilder() {
   const navigate = useNavigate()
   const [entry, setEntry] = useState<ProcessEntry>(() => emptyEntry(id ?? generateId()))
   const lastSavedRef = useRef<ProcessEntry | null>(null)
+  // Direct getter into CanvasInner's live rfNodes state — bypasses the
+  // entry.processMap sync chain which can be stale at save time.
+  const getCanvasMapRef = useRef<(() => ProcessMap) | null>(null)
+  const historyRef = useRef<ProcessMap[]>([])
+  const historyIdxRef = useRef<number>(-1)
+
+  // External NodeEditDialog — overlays the left panel instead of the canvas
+  const [externalEditingNode, setExternalEditingNode] = useState<Node | null>(null)
+  const editHandlerRef = useRef<{
+    save: (id: string, label: string, timeEstimate: string, lane: any, badge?: any, durationMinutes?: number, attachments?: any[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  } | null>(null)
+
+  // Seed history with the initial empty canvas state so the very first
+  // canvas action is always undoable.
+  useEffect(() => {
+    if (!id && historyRef.current.length === 0) {
+      pushHistory(entry.processMap)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function pushHistory(map: ProcessMap) {
+    historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1)
+    historyRef.current.push(structuredClone(map))
+    if (historyRef.current.length > 50) historyRef.current.shift()
+    historyIdxRef.current = historyRef.current.length - 1
+  }
+
+  // Capture the authenticated user email. viewer() returns a Promise so we
+  // must await it — synchronous access always returns undefined.
+  const currentUserEmailRef = useRef('')
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const viewer = await (window as any).MagicAuth?.viewer?.()
+        if (viewer?.email) currentUserEmailRef.current = viewer.email
+      } catch {}
+    })()
+  }, [])
+
+  const handleSaveRef = useRef<() => void>(() => {})
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [leftTab, setLeftTab] = useState<'form' | 'ai' | 'details'>('form')
@@ -94,7 +137,19 @@ export default function ProcessBuilder() {
     return saved && !isNaN(n) ? n : 50
   })
   const leftDragCleanupRef = useRef<(() => void) | null>(null)
+  const justAutoSavedRef = useRef(false)
   const [folders, setFolders] = useState<FolderEntry[]>([])
+  const [autoSaving, setAutoSaving] = useState(false)
+
+  const [searchParams] = useSearchParams()
+
+  // Read path highlight from URL — only on mount, intentionally empty deps
+  const initialHighlight = useMemo(() => {
+    const pathParam = searchParams.get('path')
+    if (!pathParam) return undefined
+    const ids = pathParam.split(',').filter(Boolean)
+    return ids.length > 0 ? new Set(ids) : undefined
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (id) {
@@ -102,12 +157,83 @@ export default function ProcessBuilder() {
         if (loaded) {
           setEntry(loaded)
           lastSavedRef.current = loaded
+          if (loaded.processMap) pushHistory(loaded.processMap)
         }
       })
     }
   }, [id])
 
   useEffect(() => { loadFolders().then(setFolders) }, [])
+
+  // Keep ref current so stale-closure effects always call the latest handleSave
+  handleSaveRef.current = handleSave
+
+  // Auto-save: debounce 30s after any entry change, draft only, named process only
+  useEffect(() => {
+    if (entry.status === 'submitted' || !entry.processName.trim()) return
+    if (justAutoSavedRef.current) {
+      justAutoSavedRef.current = false  // reset after one skip
+      return
+    }
+    setAutoSaving(true)
+    const timer = setTimeout(() => {
+      justAutoSavedRef.current = true
+      handleSaveRef.current()
+      setAutoSaving(false)
+    }, 30_000)
+    return () => {
+      clearTimeout(timer)
+      setAutoSaving(false)
+    }
+  }, [entry]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        const target = e.target as HTMLElement
+        const isEditable = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
+        if (!isEditable) {
+          e.preventDefault()
+          handleSaveRef.current()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        (e.target as HTMLElement)?.isContentEditable
+      if (isEditable) return
+
+      const isUndo = (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey
+      const isRedo = (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))
+
+      if (isUndo) {
+        e.preventDefault()
+        if (historyIdxRef.current <= 0) return
+        historyIdxRef.current--
+        const map = historyRef.current[historyIdxRef.current]
+        setEntry(prev => ({ ...prev, processMap: structuredClone(map) }))
+        setLayoutKey(k => k + 1)
+      }
+
+      if (isRedo) {
+        e.preventDefault()
+        if (historyIdxRef.current >= historyRef.current.length - 1) return
+        historyIdxRef.current++
+        const map = historyRef.current[historyIdxRef.current]
+        setEntry(prev => ({ ...prev, processMap: structuredClone(map) }))
+        setLayoutKey(k => k + 1)
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -116,18 +242,20 @@ export default function ProcessBuilder() {
   }, [])
 
   function patch(update: Partial<ProcessEntry>) {
-    setEntry((prev) => {
-      const next = { ...prev, ...update }
-      return next
-    })
+    if (update.processMap) pushHistory(update.processMap)
+    setEntry((prev) => ({ ...prev, ...update }))
   }
 
   function handleSave() {
     const now = new Date().toISOString()
-    const by = (window as any).MagicAuth?.viewer?.()?.email ?? 'unknown'
-    const trackingPatch = appendLog(entry, 'saved', by, now, lastSavedRef.current)
+    const by = currentUserEmailRef.current || entry.author || 'unknown'
+    // Read fresh positions directly from CanvasInner's rfNodes state.
+    // entry.processMap can be one render behind after a drag; the getter always returns current positions.
+    const freshProcessMap = getCanvasMapRef.current?.() ?? entry.processMap
+    const entryWithFreshMap = { ...entry, processMap: freshProcessMap }
+    const trackingPatch = appendLog(entryWithFreshMap, 'saved', by, now, lastSavedRef.current)
     const saved: ProcessEntry = {
-      ...entry,
+      ...entryWithFreshMap,
       ...trackingPatch,
       lastReviewed: entry.lastReviewed || now.split('T')[0],
       status: entry.status === 'submitted' ? 'submitted' as const : 'draft' as const,
@@ -142,8 +270,8 @@ export default function ProcessBuilder() {
     setSubmitting(true)
     try {
       const now = new Date().toISOString()
-      const viewer = (window as any).MagicAuth?.viewer?.()
-      const by = viewer?.email ?? entry.submittedBy ?? 'unknown'
+      const viewer = await (window as any).MagicAuth?.viewer?.()
+      const by = currentUserEmailRef.current || viewer?.email || entry.submittedBy || entry.author || 'unknown'
       const trackingPatch = appendLog(entry, 'submitted', by, now, lastSavedRef.current)
       const toolUrl = `${window.location.origin}${window.location.pathname}#/edit/${entry.id}`
       const submitted: ProcessEntry = {
@@ -316,6 +444,9 @@ export default function ProcessBuilder() {
           </div>
         </div>
         <div className="flex gap-2 items-center">
+          {autoSaving && (
+            <span className="text-xs text-muted-foreground animate-pulse">Auto-saving…</span>
+          )}
           {folders.length > 0 && (
             <select
               value={entry.folderId ?? ''}
@@ -348,7 +479,7 @@ export default function ProcessBuilder() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Form / AI tabs */}
         <div
-          className="border-r flex flex-col overflow-hidden shrink-0"
+          className="relative border-r flex flex-col overflow-hidden shrink-0"
           style={{ width: leftWidth, minWidth: 280 }}
         >
           {/* Tab bar — same pattern as PlaybookStudio's Visual/DSL/Chat tabs */}
@@ -419,6 +550,25 @@ export default function ProcessBuilder() {
               </div>
             </>
           )}
+
+          {/* Node edit overlay — sits over the left panel, canvas stays fully visible */}
+          {externalEditingNode && (
+            <div className="absolute inset-0 z-50 bg-background border-r overflow-y-auto">
+              <NodeEditDialog
+                node={externalEditingNode}
+                inline
+                onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked) => {
+                  editHandlerRef.current?.save(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked)
+                  setExternalEditingNode(null)
+                }}
+                onDelete={() => {
+                  editHandlerRef.current?.delete(externalEditingNode.id)
+                  setExternalEditingNode(null)
+                }}
+                onClose={() => setExternalEditingNode(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Indigo drag handle — Form ↔ Canvas */}
@@ -447,10 +597,15 @@ export default function ProcessBuilder() {
                 direction={canvasDirection}
                 lineStyle={lineStyle}
                 canvasLabel="Current Flow"
+                domain={entry.domain || undefined}
+                initialHighlight={initialHighlight}
                 onChange={(map) => patch({ processMap: map })}
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}
                 layoutKey={layoutKey}
+                onRegisterGetter={(getter) => { getCanvasMapRef.current = getter }}
+                onNodeEdit={(node) => setExternalEditingNode(node)}
+                onRegisterEditHandler={(handler) => { editHandlerRef.current = handler }}
               />
             )}
             {viewMode === 'optimization' && (
@@ -463,6 +618,7 @@ export default function ProcessBuilder() {
                   direction={canvasDirection}
                   lineStyle={lineStyle}
                   canvasLabel="Ideal Flow"
+                  domain={entry.domain || undefined}
                   onChange={(map) => patch({ optimizationMap: map })}
                   onRelayout={handleOptimizationRelayout}
                   onLineStyleChange={setLineStyle}

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import type { ProcessEntry, Domain, FolderEntry } from '@/lib/types'
-import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder, saveFolders } from '@/lib/storage'
-import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2, Search } from 'lucide-react'
+import { listEntries, loadFolders, saveEntry, saveFolder, deleteFolder, saveFolders, generateId } from '@/lib/storage'
+import { ExternalLink, Edit, Trash2, RefreshCw, BarChart2, Search, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import FolderSidebar from '@/components/FolderSidebar'
@@ -15,19 +15,20 @@ const TIER_COLORS = {
   '': 'bg-gray-100 text-gray-500',
 }
 
-// Owner check — same pattern as PlaybookStudio
-function isOwner(): boolean {
-  try {
-    return (window as any).MagicAuth?.viewer?.()?.isOwner === true
-  } catch {
-    return false
-  }
-}
-
 export default function ProcessList() {
   const [entries, setEntries] = useState<ProcessEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [owner] = useState(isOwner)
+  const [owner, setOwner] = useState(false)
+  const [currentUserEmail, setCurrentUserEmail] = useState('')
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const viewer = await (window as any).MagicAuth?.viewer?.()
+        if (viewer?.email) setCurrentUserEmail(viewer.email)
+        if (viewer?.isOwner) setOwner(true)
+      } catch {}
+    })()
+  }, [])
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -57,6 +58,24 @@ export default function ProcessList() {
     await saveFolders(reordered)
   }
 
+  function handleDuplicate(entry: ProcessEntry) {
+    const duplicate: ProcessEntry = {
+      ...structuredClone(entry),
+      id: generateId(),
+      processName: `Copy of ${entry.processName || 'Untitled'}`,
+      status: 'draft',
+      submittedAt: '',
+      submittedBy: '',
+      notionPageUrl: null,
+      author: undefined,
+      collaborators: undefined,
+      editLog: undefined,
+      deletedAt: undefined,
+    }
+    saveEntry(duplicate)
+    setEntries(prev => [duplicate, ...prev])
+  }
+
   function handleAssignProcess(processId: string, folderId: string | null) {
     const entry = entries.find(e => e.id === processId)
     if (!entry) return
@@ -80,11 +99,27 @@ export default function ProcessList() {
     if (selectedFolderId === id) setSelectedFolderId(null)
   }
 
-  async function handleDelete(entry: ProcessEntry) {
-    if (!window.confirm(`Delete "${entry.processName}"? This cannot be undone.`)) return
+  // Soft delete — moves to trash
+  function handleDelete(entry: ProcessEntry) {
+    if (!window.confirm(`Move "${entry.processName}" to Trash?`)) return
+    const trashed = { ...entry, deletedAt: new Date().toISOString() }
+    saveEntry(trashed)
+    setEntries(prev => prev.map(e => e.id === entry.id ? trashed : e))
+    toast.success(`"${entry.processName}" moved to Trash`)
+  }
+
+  // Restore from trash
+  function handleRestore(entry: ProcessEntry) {
+    const restored = { ...entry, deletedAt: undefined }
+    saveEntry(restored)
+    setEntries(prev => prev.map(e => e.id === entry.id ? restored : e))
+    toast.success(`"${entry.processName}" restored`)
+  }
+
+  // Permanent delete from trash
+  async function handlePermanentDelete(entry: ProcessEntry) {
+    if (!window.confirm(`Permanently delete "${entry.processName}"? This cannot be undone.`)) return
     try {
-      // Mark as deleted by saving with a sentinel — storage.ts doesn't have delete yet
-      // so we filter it out by saving with a special flag
       const scope = (window as any).MagicStorage?.public ?? null
       if (scope?.delete) {
         await scope.delete(`processes/${entry.id}`)
@@ -92,15 +127,21 @@ export default function ProcessList() {
         window.localStorage.removeItem(`wfo-process-mapper:processes/${entry.id}`)
       }
       setEntries(prev => prev.filter(e => e.id !== entry.id))
-      toast.success(`"${entry.processName}" deleted`)
+      toast.success(`"${entry.processName}" permanently deleted`)
     } catch {
       toast.error('Delete failed')
     }
   }
 
-  const folderFiltered = selectedFolderId
-    ? entries.filter(e => e.folderId === selectedFolderId)
-    : entries
+  const activeEntries = entries.filter(e => !e.deletedAt)
+  const trashedEntries = entries.filter(e => !!e.deletedAt)
+  const isTrashView = selectedFolderId === '__trash__'
+
+  const folderFiltered = isTrashView
+    ? trashedEntries
+    : selectedFolderId
+    ? activeEntries.filter(e => e.folderId === selectedFolderId)
+    : activeEntries
 
   const visibleEntries = query.trim()
     ? folderFiltered.filter(e =>
@@ -126,6 +167,7 @@ export default function ProcessList() {
         onDeleteFolder={handleDeleteFolder}
         onReorderFolders={handleReorderFolders}
         onAssignProcess={handleAssignProcess}
+        trashCount={trashedEntries.length}
       />
       <div className="flex-1 p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -176,8 +218,29 @@ export default function ProcessList() {
         <div className="text-muted-foreground text-sm py-12 text-center">Loading…</div>
       ) : visibleEntries.length === 0 ? (
         <div className="text-muted-foreground text-sm py-16 text-center border rounded-lg">
-          {selectedFolderId ? 'No processes in this folder.' : <>No processes captured yet.{' '}<Link to="/new" className="underline hover:text-foreground">Start with + New Process</Link></>}
+          {isTrashView ? 'Trash is empty.' : selectedFolderId ? 'No processes in this folder.' : <>No processes captured yet.{' '}<Link to="/new" className="underline hover:text-foreground">Start with + New Process</Link></>}
         </div>
+      ) : isTrashView ? (
+        <section>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
+            Trash
+            <span className="text-[10px] font-normal normal-case text-muted-foreground">Restore or permanently delete</span>
+          </h2>
+          <div className="border rounded-lg divide-y">
+            {visibleEntries.map((entry) => (
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                owner={owner}
+                currentUserEmail={currentUserEmail}
+                isTrash
+                onDelete={handlePermanentDelete}
+                onRestore={handleRestore}
+                onDragStart={() => {}}
+              />
+            ))}
+          </div>
+        </section>
       ) : (
         <div className="space-y-8">
           {domains.map((domain) => {
@@ -192,7 +255,9 @@ export default function ProcessList() {
                       key={entry.id}
                       entry={entry}
                       owner={owner}
+                      currentUserEmail={currentUserEmail}
                       onDelete={handleDelete}
+                      onDuplicate={handleDuplicate}
                       onDragStart={(e, id) => {
                         e.dataTransfer.setData('process-id', id)
                         e.dataTransfer.effectAllowed = 'move'
@@ -213,6 +278,7 @@ export default function ProcessList() {
                     entry={entry}
                     owner={owner}
                     onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
                     onDragStart={(e, id) => {
                       e.dataTransfer.setData('process-id', id)
                       e.dataTransfer.effectAllowed = 'move'
@@ -244,12 +310,20 @@ function avatarInitials(email: string): string {
 function EntryRow({
   entry,
   owner,
+  currentUserEmail,
+  isTrash = false,
   onDelete,
+  onRestore,
+  onDuplicate,
   onDragStart,
 }: {
   entry: ProcessEntry
   owner: boolean
+  currentUserEmail?: string
+  isTrash?: boolean
   onDelete: (e: ProcessEntry) => void
+  onRestore?: (e: ProcessEntry) => void
+  onDuplicate?: (e: ProcessEntry) => void
   onDragStart: (e: React.DragEvent, entryId: string) => void
 }) {
   return (
@@ -342,12 +416,39 @@ function EntryRow({
             <Edit className="w-3.5 h-3.5" />
           </Link>
         </Button>
-        {owner && (
+        {!isTrash && onDuplicate && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-muted-foreground hover:text-foreground"
+            onClick={() => onDuplicate(entry)}
+            title="Duplicate process"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </Button>
+        )}
+        {isTrash ? (
+          <>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onRestore?.(entry)}>
+              Restore
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => onDelete(entry)}
+              title="Permanently delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        ) : (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDelete(entry)}
+            title="Move to Trash"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>

@@ -87,3 +87,18 @@
   color: var(--popover-foreground) !important;
   opacity: 0.78; /* slight fade keeps title/description hierarchy without losing readability */
 }
+
+/*
+ * Fullscreen: browser wraps the target element in a black backdrop by default.
+ * Force the canvas fullscreen container to keep the app background color so
+ * the canvas doesn't render as black when going fullscreen.
+ */
+.canvas-fullscreen-target:fullscreen,
+.canvas-fullscreen-target:-webkit-full-screen,
+.canvas-fullscreen-target:-moz-full-screen {
+  background-color: var(--background);
+}
+.canvas-fullscreen-target:fullscreen::backdrop,
+.canvas-fullscreen-target:-webkit-full-screen::backdrop {
+  background-color: var(--background);
+}

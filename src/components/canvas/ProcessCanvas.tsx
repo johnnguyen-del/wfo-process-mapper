@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, BarChart2, Clock, GitBranch, GitMerge, Maximize2, Minimize2 } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import html2canvas from 'html2canvas'
+import { ArrowDown, ArrowRight, BarChart2, Clock, Download, GitBranch, GitMerge, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   Controls,
+  MiniMap,
   addEdge,
+  applyNodeChanges,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -15,6 +19,7 @@ import {
   Position,
   type Node,
   type Edge,
+  type NodeChange,
   type Connection,
   type OnConnect,
 } from '@xyflow/react'
@@ -69,6 +74,17 @@ const ALL_LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automatio
 
 const EDGE_MARKER = { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 }
 
+const NODE_MINIMAP_COLORS: Partial<Record<ProcessNodeType, string>> = {
+  start: '#f97316',
+  end: '#f97316',
+  step: '#3b82f6',
+  decision: '#a855f7',
+  automation: '#10b981',
+  comms: '#f59e0b',
+  swimlane: '#bfdbfe',
+  sticky: '#fef9c3',
+}
+
 function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Node[] {
   const sourcePos = direction === 'TB' ? Position.Bottom : Position.Right
   const targetPos = direction === 'TB' ? Position.Top : Position.Left
@@ -79,9 +95,9 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
     sourcePosition: sourcePos,
     targetPosition: targetPos,
     zIndex: n.type === 'sticky' ? 10 : n.type === 'swimlane' ? -1 : 0,
-    style: n.type === 'swimlane'
-      ? { width: n.nodeWidth ?? 400, height: n.nodeHeight ?? 200 }
-      : undefined,
+    draggable: !n.locked,
+    deletable: !n.locked,
+    style: n.type === 'swimlane' ? { width: n.nodeWidth ?? 400, height: n.nodeHeight ?? 200 } : undefined,
     data: {
       label: n.label,
       lane: n.lane,
@@ -91,6 +107,7 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
       durationMinutes: n.durationMinutes,
       attachments: n.attachments,
       nodeColor: n.nodeColor,
+      locked: n.locked,
     },
   }))
 }
@@ -134,6 +151,7 @@ function fromRfNodes(rfNodes: Node[]): ProcessNode[] {
       durationMinutes: (n.data as any).durationMinutes,
       attachments: (n.data as any).attachments,
       nodeColor: (n.data as any).nodeColor,
+      locked: (n.data as any).locked || undefined,
       nodeWidth: n.type === 'swimlane' && n.measured?.width ? Math.round(n.measured.width) : undefined,
       nodeHeight: n.type === 'swimlane' && n.measured?.height ? Math.round(n.measured.height) : undefined,
       position: n.position,
@@ -228,12 +246,21 @@ interface CanvasInnerProps {
   lineStyle: LineStyle
   canvasLabel?: string
   readOnly?: boolean
+  colorMode?: 'light' | 'dark'
+  domain?: string
+  initialHighlight?: Set<string>
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
+  onRegisterGetter?: (getter: () => ProcessMap) => void
+  onNodeEdit?: (node: Node) => void
+  onRegisterEditHandler?: (handler: {
+    save: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  }) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, onChange, onRelayout, onLineStyleChange }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -242,10 +269,48 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showTimes, setShowTimes] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
   const [showOutcomes, setShowOutcomes] = useState(false)
-  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(
+    () => initialHighlight && initialHighlight.size > 0 ? new Set(initialHighlight) : new Set()
+  )
+  const [isolateMode, setIsolateMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [editingEdge, setEditingEdge] = useState<{
+    id: string
+    label: string
+    screenX: number
+    screenY: number
+  } | null>(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
+
+  // Refs always hold the latest rendered state — used to read fresh values
+  // inside event callbacks where the closure would otherwise be stale.
+  const rfNodesRef = useRef(rfNodes)
+  rfNodesRef.current = rfNodes
+  const rfEdgesRef = useRef(rfEdges)
+  rfEdgesRef.current = rfEdges
+  const clipboardRef = useRef<{ nodes: ProcessNode[]; edges: ProcessEdge[] } | null>(null)
+  const mousePosRef = useRef<{ x: number; y: number } | null>(null)
+
+  // Register a getter so ProcessBuilder can read live canvas state at save time.
+  // The getter always reads from rfNodesRef/rfEdgesRef (updated each render),
+  // so it returns fresh positions regardless of when it's called.
+  useEffect(() => {
+    onRegisterGetter?.(() => ({
+      nodes: fromRfNodes(rfNodesRef.current),
+      edges: fromRfEdges(rfEdgesRef.current),
+    }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register save/delete handlers so ProcessBuilder can call back into CanvasInner
+  // when it owns the NodeEditDialog (external edit mode via onNodeEdit prop).
+  useEffect(() => {
+    onRegisterEditHandler?.({
+      save: handleEditSave,
+      delete: (id: string) => { handleNodeDelete(id) },
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFullscreen() {
     const el = canvasContainerRef.current?.closest('.canvas-fullscreen-target') as HTMLElement | null
@@ -264,6 +329,126 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
   }, [])
 
+  async function handleExportPng() {
+    const container = canvasContainerRef.current
+    if (!container) return
+    const reactFlowEl = container.querySelector('.react-flow') as HTMLElement | null
+    if (!reactFlowEl) return
+    try {
+      const canvas = await html2canvas(reactFlowEl, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      })
+      canvas.toBlob(blob => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `process-map.png`
+        a.click()
+        URL.revokeObjectURL(url)
+      }, 'image/png')
+    } catch (err) {
+      console.error('PNG export failed:', err)
+    }
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        (e.target as HTMLElement)?.isContentEditable
+
+      if (e.key === 'Escape' && showShortcuts) {
+        setShowShortcuts(false)
+        return
+      }
+
+      if (isEditable || readOnly) return
+
+      if (e.key === '?') {
+        e.preventDefault()
+        setShowShortcuts(s => !s)
+        return
+      }
+
+      // Select All
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault()
+        setRfNodes(prev => prev.map(n => ({ ...n, selected: true })))
+        return
+      }
+
+      // Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const selectedNodes = rfNodesRef.current.filter(n => n.selected)
+        if (selectedNodes.length === 0) return
+        const selectedIds = new Set(selectedNodes.map(n => n.id))
+        const connectedEdges = rfEdgesRef.current.filter(
+          edge => selectedIds.has(edge.source) && selectedIds.has(edge.target)
+        )
+        clipboardRef.current = {
+          nodes: fromRfNodes(selectedNodes),
+          edges: fromRfEdges(connectedEdges),
+        }
+        return
+      }
+
+      // Paste
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        const cb = clipboardRef.current
+        if (!cb || cb.nodes.length === 0) return
+
+        const stamp = crypto.randomUUID().split('-')[0]
+        const idMap = new Map<string, string>()
+        cb.nodes.forEach(n => idMap.set(n.id, `copy-${stamp}-${n.id}`))
+
+        // Compute paste position: cursor or +30/+30 offset from bounding-box top-left
+        const minX = Math.min(...cb.nodes.map(n => n.position.x))
+        const minY = Math.min(...cb.nodes.map(n => n.position.y))
+        let originX = minX + 30
+        let originY = minY + 30
+
+        if (mousePosRef.current) {
+          const flowPos = screenToFlowPosition(mousePosRef.current)
+          originX = flowPos.x
+          originY = flowPos.y
+        }
+
+        const pastedNodes: ProcessNode[] = cb.nodes.map(n => ({
+          ...n,
+          id: idMap.get(n.id)!,
+          locked: undefined, // pasted nodes start unlocked
+          position: {
+            x: originX + (n.position.x - minX),
+            y: originY + (n.position.y - minY),
+          },
+        }))
+
+        const pastedEdges: ProcessEdge[] = cb.edges.map(e => ({
+          id: `copy-${stamp}-${e.id}`,
+          source: idMap.get(e.source) ?? e.source,
+          target: idMap.get(e.target) ?? e.target,
+          label: e.label,
+        }))
+
+        const allNodes = [...fromRfNodes(rfNodesRef.current), ...pastedNodes]
+        const allEdges = [...fromRfEdges(rfEdgesRef.current), ...pastedEdges]
+        const newRfNodes = toRfNodes(allNodes, direction)
+        const newRfEdges = toRfEdges(allEdges, lineStyle)
+        setRfNodes(newRfNodes)
+        setRfEdges(newRfEdges)
+        commit(newRfNodes, newRfEdges)
+        return
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [readOnly, direction, lineStyle, showShortcuts])
+
   // Auto-fit when nodes are imported (canvas remounts with pre-loaded nodes)
   useEffect(() => {
     if (processMap.nodes.length > 0) {
@@ -277,17 +462,27 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfEdges(toRfEdges(processMap.edges, lineStyle))
   }, [lineStyle, processMap.edges])
 
-  // Dim non-highlighted nodes when a path is selected
+  // Dim/hide non-highlighted nodes when a path is selected
   useEffect(() => {
     if (highlightedNodes.size === 0) {
-      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1 } })))
+      setRfNodes(prev => prev.map(n => ({ ...n, style: { ...n.style, opacity: 1, pointerEvents: undefined } })))
+      setIsolateMode(false)
+    } else if (isolateMode) {
+      setRfNodes(prev => prev.map(n => ({
+        ...n,
+        style: {
+          ...n.style,
+          opacity: highlightedNodes.has(n.id) ? 1 : 0,
+          pointerEvents: highlightedNodes.has(n.id) ? undefined : 'none' as const,
+        },
+      })))
     } else {
       setRfNodes(prev => prev.map(n => ({
         ...n,
         style: { ...n.style, opacity: highlightedNodes.has(n.id) ? 1 : 0.2 },
       })))
     }
-  }, [highlightedNodes])
+  }, [highlightedNodes, isolateMode])
 
   function commit(nodes: Node[], edges: Edge[]) {
     onChange({
@@ -355,18 +550,79 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   function handleNodeDoubleClick(_e: React.MouseEvent, node: Node) {
     // Double-click opens edit dialog — single click is used for selection
     if (!node.id.startsWith('lane-')) {
-      setEditingNode(node)
+      if (onNodeEdit) {
+        onNodeEdit(node)
+      } else {
+        setEditingNode(node)
+      }
     }
   }
 
+  function handleEdgeDoubleClick(_e: React.MouseEvent, edge: Edge) {
+    if (readOnly) return
+    // Find midpoint between source and target node positions
+    const sourceNode = rfNodesRef.current.find(n => n.id === edge.source)
+    const targetNode = rfNodesRef.current.find(n => n.id === edge.target)
+    if (!sourceNode || !targetNode) return
+    const midFlow = {
+      x: (sourceNode.position.x + targetNode.position.x) / 2 + 100,
+      y: (sourceNode.position.y + targetNode.position.y) / 2 + 20,
+    }
+    // Convert flow coords to screen coords via the canvas container
+    const container = canvasContainerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    // Use the ReactFlow viewport to convert (read from the DOM transform)
+    const transform = container.querySelector('.react-flow__viewport') as HTMLElement | null
+    const style = transform ? window.getComputedStyle(transform) : null
+    const matrix = style ? new DOMMatrixReadOnly(style.transform) : null
+    const zoom = matrix ? matrix.a : 1
+    const tx = matrix ? matrix.e : 80
+    const ty = matrix ? matrix.f : 10
+    setEditingEdge({
+      id: edge.id,
+      label: typeof edge.label === 'string' ? edge.label : '',
+      screenX: rect.left + midFlow.x * zoom + tx,
+      screenY: rect.top + midFlow.y * zoom + ty,
+    })
+  }
+
+  function saveEdgeLabel(edgeId: string, newLabel: string) {
+    setRfEdges(prev => {
+      const updated = prev.map(e =>
+        e.id === edgeId
+          ? { ...e, label: newLabel.trim() || undefined }
+          : e
+      )
+      commit(fromRfNodes(rfNodesRef.current), fromRfEdges(updated))
+      return updated
+    })
+    setEditingEdge(null)
+  }
+
   function handleDeleteSelected() {
-    const selectedIds = new Set(rfNodes.filter(n => n.selected).map(n => n.id))
+    const selectedIds = new Set(
+      rfNodes.filter(n => n.selected && !n.data?.locked).map(n => n.id)
+    )
     if (selectedIds.size === 0) return
     setRfNodes(prev => {
       const updated = prev.filter(n => !selectedIds.has(n.id))
       const filteredEdges = rfEdges.filter(e => !selectedIds.has(e.source) && !selectedIds.has(e.target))
       setRfEdges(filteredEdges)
       commit(updated, filteredEdges)
+      return updated
+    })
+  }
+
+  function handleLockSelected(lock: boolean) {
+    if (readOnly) return
+    setRfNodes(prev => {
+      const updated = prev.map(n =>
+        n.selected && n.type !== 'start' && n.type !== 'end'
+          ? { ...n, data: { ...n.data, locked: lock }, draggable: !lock, deletable: !lock }
+          : n
+      )
+      commit(updated, rfEdges)
       return updated
     })
   }
@@ -389,11 +645,16 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, showTimes: next } })))
   }
 
-  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string) {
+  function handleEditSave(
+    id: string, label: string, timeEstimate: string, lane: SwimLane,
+    badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[],
+    nodeColor?: string, locked?: boolean
+  ) {
     setRfNodes((prev) => {
       const updated = prev.map((n) =>
         n.id === id
-          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments, nodeColor } }
+          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments, nodeColor, locked },
+              draggable: !locked, deletable: !locked }
           : n
       )
       commit(updated, rfEdges)
@@ -494,6 +755,16 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           >
             {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
+          {!readOnly && rfNodes.length > 0 && (
+            <button
+              onClick={handleExportPng}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
+              title="Export canvas as PNG"
+            >
+              <Download className="w-3 h-3" />
+              PNG
+            </button>
+          )}
           <button
             onClick={() => setShowMetrics(s => !s)}
             className={cn(
@@ -507,7 +778,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           </button>
           {!readOnly && (
             <button
-              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) setHighlightedNodes(new Set()) }}
+              onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) { setHighlightedNodes(new Set()); setIsolateMode(false) } }}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
                 showOutcomes
@@ -518,6 +789,20 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
               <GitMerge className="w-3 h-3" /> Outcomes
             </button>
           )}
+          {!readOnly && (
+            <button
+              onClick={() => setShowShortcuts(s => !s)}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                showShortcuts
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+              )}
+              title="Keyboard shortcuts (?)"
+            >
+              ⌨
+            </button>
+          )}
         </div>
       </div>
 
@@ -525,16 +810,85 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         className="relative flex-1"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
+        onMouseMove={(e) => { mousePosRef.current = { x: e.clientX, y: e.clientY } }}
+        onMouseLeave={() => { mousePosRef.current = null }}
       >
         {showMetrics && (
-          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
+          <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} onHighlight={setHighlightedNodes} />
         )}
         {showOutcomes && (
           <OutcomePanel
             processMap={processMap}
             onHighlight={setHighlightedNodes}
-            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()) }}
+            onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()); setIsolateMode(false) }}
+            onIsolate={setIsolateMode}
           />
+        )}
+        {editingEdge && (
+          <div
+            className="fixed z-50 bg-background border rounded-lg shadow-xl p-2 flex items-center gap-1.5"
+            style={{ left: editingEdge.screenX - 90, top: editingEdge.screenY - 20, minWidth: 200 }}
+          >
+            <input
+              autoFocus
+              value={editingEdge.label}
+              onChange={e => setEditingEdge(prev => prev ? { ...prev, label: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveEdgeLabel(editingEdge.id, editingEdge.label)
+                if (e.key === 'Escape') setEditingEdge(null)
+              }}
+              onBlur={() => saveEdgeLabel(editingEdge.id, editingEdge.label)}
+              placeholder="Edge label (e.g. Yes / No)"
+              className="flex-1 text-xs border-none outline-none bg-transparent min-w-0"
+            />
+            <button
+              onMouseDown={e => { e.preventDefault(); saveEdgeLabel(editingEdge.id, editingEdge.label) }}
+              className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+            >
+              ✓
+            </button>
+            <button
+              onMouseDown={e => { e.preventDefault(); setEditingEdge(null) }}
+              className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {showShortcuts && (
+          <div
+            className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+            onClick={() => setShowShortcuts(false)}
+          >
+            <div
+              className="bg-background border rounded-xl shadow-xl p-5 w-72 text-xs"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-semibold text-sm">Keyboard Shortcuts</span>
+                <button onClick={() => setShowShortcuts(false)} className="text-muted-foreground hover:text-foreground leading-none">✕</button>
+              </div>
+              <table className="w-full">
+                <tbody>
+                  {[
+                    ['Ctrl+Z', 'Undo'],
+                    ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
+                    ['Ctrl+C', 'Copy selected nodes'],
+                    ['Ctrl+V', 'Paste'],
+                    ['Ctrl+A', 'Select all'],
+                    ['Ctrl+S', 'Save'],
+                    ['Delete', 'Delete selected'],
+                    ['? or ⌨', 'Toggle this guide'],
+                  ].map(([key, action]) => (
+                    <tr key={key} className="border-b last:border-0">
+                      <td className="py-1.5 pr-4 font-mono text-muted-foreground text-[10px]">{key}</td>
+                      <td className="py-1.5">{action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
         {/* Multi-select toolbar — appears when nodes are selected */}
         {selectedCount > 0 && (
@@ -542,6 +896,18 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
             <span>{selectedCount} node{selectedCount > 1 ? 's' : ''} selected</span>
             <span className="opacity-40">|</span>
             <span className="opacity-60 text-[10px]">drag to move · Delete to remove</span>
+            <button
+              onClick={() => handleLockSelected(true)}
+              className="text-amber-300 hover:text-amber-200 transition-colors"
+            >
+              🔒 Lock
+            </button>
+            <button
+              onClick={() => handleLockSelected(false)}
+              className="text-muted-foreground hover:text-background/80 transition-colors"
+            >
+              🔓 Unlock
+            </button>
             <button
               onClick={handleDeleteSelected}
               className="text-red-300 hover:text-red-200 transition-colors"
@@ -551,13 +917,32 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           </div>
         )}
 
+        {rfNodes.length === 0 && !readOnly && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 gap-2">
+            <p className="text-sm text-muted-foreground/40 select-none">
+              Drag nodes from the palette to start mapping
+            </p>
+          </div>
+        )}
+
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
-          onNodesChange={onNodesChange}
+          onNodesChange={(changes: NodeChange[]) => {
+            onNodesChange(changes)
+            // When a drag ends (position change with dragging===false), commit positions.
+            // We use applyNodeChanges() to compute the final node positions synchronously
+            // from the pending changes — this avoids stale-ref and setTimeout timing bugs
+            // where rfNodesRef.current might not yet reflect the final drag position.
+            if (!readOnly && changes.some(c => c.type === 'position' && !(c as any).dragging)) {
+              const updatedNodes = applyNodeChanges(changes, rfNodesRef.current)
+              commit(fromRfNodes(updatedNodes), fromRfEdges(rfEdgesRef.current))
+            }
+          }}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeDoubleClick={readOnly ? undefined : handleNodeDoubleClick}
+          onEdgeDoubleClick={readOnly ? undefined : handleEdgeDoubleClick}
           nodesDraggable={!readOnly}
           nodesConnectable={!readOnly}
           nodeTypes={NODE_TYPES}
@@ -565,26 +950,38 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
           deleteKeyCode={readOnly ? null : 'Delete'}
           multiSelectionKeyCode="Shift"
+          selectionKeyCode="Shift"
           selectionOnDrag
-          panOnDrag={[1, 2]}
+          panOnDrag={[0, 1, 2]}
+          panOnScroll={true}
           onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
+          colorMode={colorMode ?? 'light'}
           style={{ background: 'transparent' }}
         >
           {/* SwimlaneOverlay removed — free layout with color-coded nodes instead */}
           <Background gap={20} size={1} color="#e5e7eb50" />
           <Controls />
+          {!readOnly && (
+            <MiniMap
+              nodeColor={(n) => NODE_MINIMAP_COLORS[n.type as ProcessNodeType] ?? '#94a3b8'}
+              maskColor="rgba(0,0,0,0.04)"
+              style={{ bottom: 64, right: 8, width: 160, height: 100 }}
+              pannable
+              zoomable
+            />
+          )}
         </ReactFlow>
 
         {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
       </div>
 
-      <MapQualityChecklist processMap={processMap} activeLanes={lanes} />
+      <MapQualityChecklist processMap={processMap} activeLanes={lanes} domain={domain} />
 
       {editingNode && (
         <NodeEditDialog
           node={editingNode}
-          onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor) =>
-            handleEditSave(id, label, time, lane, badge, durationMinutes, attachments, nodeColor)
+          onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked) =>
+            handleEditSave(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked)
           }
           onDelete={() => { handleNodeDelete(editingNode.id); setEditingNode(null) }}
           onClose={() => setEditingNode(null)}
@@ -603,13 +1000,27 @@ interface ProcessCanvasProps {
   lineStyle: LineStyle
   canvasLabel?: string
   readOnly?: boolean
+  colorMode?: 'light' | 'dark'
+  domain?: string
+  initialHighlight?: Set<string>
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
   layoutKey?: number
+  // Registers a getter that ProcessBuilder can call at save time to read
+  // the current canvas state directly from rfNodes, bypassing entry.processMap
+  onRegisterGetter?: (getter: () => ProcessMap) => void
+  /** When provided, CanvasInner will call this instead of opening its own dialog */
+  onNodeEdit?: (node: Node) => void
+  /** Registers save/delete handlers so the external dialog owner can call back into CanvasInner */
+  onRegisterEditHandler?: (handler: {
+    save: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  }) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, initialHighlight, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
+  const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
   // Only filter lanes when the canvas is empty (manual drag mode).
@@ -639,9 +1050,15 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         lineStyle={lineStyle}
         canvasLabel={canvasLabel}
         readOnly={readOnly}
+        colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
+        domain={domain}
+        initialHighlight={initialHighlight}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
+        onRegisterGetter={onRegisterGetter}
+        onNodeEdit={onNodeEdit}
+        onRegisterEditHandler={onRegisterEditHandler}
       />
     </ReactFlowProvider>
   )
