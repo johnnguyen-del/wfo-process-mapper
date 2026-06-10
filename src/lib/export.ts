@@ -89,6 +89,7 @@ export function toYaml(entry: ProcessEntry): string {
           ...(n.nodeColor ? { node_color: n.nodeColor } : {}),
           ...(n.nodeWidth != null ? { node_width: n.nodeWidth } : {}),
           ...(n.nodeHeight != null ? { node_height: n.nodeHeight } : {}),
+          ...(n.locked ? { locked: true } : {}),
           position: n.position,
         })),
         edges: entry.processMap.edges.map(e => ({
@@ -124,6 +125,7 @@ export function fromYaml(
       nodeColor: n.node_color ?? undefined,
       nodeWidth: n.node_width ?? undefined,
       nodeHeight: n.node_height ?? undefined,
+      locked: n.locked ?? undefined,
       position: { x: n.position?.x ?? 150 + i * 220, y: n.position?.y ?? 80 },
     }))
 

@@ -93,9 +93,9 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
     sourcePosition: sourcePos,
     targetPosition: targetPos,
     zIndex: n.type === 'sticky' ? 10 : n.type === 'swimlane' ? -1 : 0,
-    style: n.type === 'swimlane'
-      ? { width: n.nodeWidth ?? 400, height: n.nodeHeight ?? 200 }
-      : undefined,
+    draggable: !n.locked,
+    deletable: !n.locked,
+    style: n.type === 'swimlane' ? { width: n.nodeWidth ?? 400, height: n.nodeHeight ?? 200 } : undefined,
     data: {
       label: n.label,
       lane: n.lane,
@@ -105,6 +105,7 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
       durationMinutes: n.durationMinutes,
       attachments: n.attachments,
       nodeColor: n.nodeColor,
+      locked: n.locked,
     },
   }))
 }
@@ -148,6 +149,7 @@ function fromRfNodes(rfNodes: Node[]): ProcessNode[] {
       durationMinutes: (n.data as any).durationMinutes,
       attachments: (n.data as any).attachments,
       nodeColor: (n.data as any).nodeColor,
+      locked: (n.data as any).locked || undefined,
       nodeWidth: n.type === 'swimlane' && n.measured?.width ? Math.round(n.measured.width) : undefined,
       nodeHeight: n.type === 'swimlane' && n.measured?.height ? Math.round(n.measured.height) : undefined,
       position: n.position,
@@ -403,6 +405,17 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     })
   }
 
+  function handleLockSelected(lock: boolean) {
+    if (readOnly) return
+    setRfNodes(prev => {
+      const updated = prev.map(n =>
+        n.selected ? { ...n, data: { ...n.data, locked: lock }, draggable: !lock, deletable: !lock } : n
+      )
+      commit(fromRfNodes(updated), fromRfEdges(rfEdges))
+      return updated
+    })
+  }
+
   const selectedCount = rfNodes.filter(n => n.selected).length
 
   function handleNodeDelete(nodeId: string) {
@@ -421,11 +434,16 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setRfNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, showTimes: next } })))
   }
 
-  function handleEditSave(id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string) {
+  function handleEditSave(
+    id: string, label: string, timeEstimate: string, lane: SwimLane,
+    badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[],
+    nodeColor?: string, locked?: boolean
+  ) {
     setRfNodes((prev) => {
       const updated = prev.map((n) =>
         n.id === id
-          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments, nodeColor } }
+          ? { ...n, data: { ...n.data, label, timeEstimate: timeEstimate || undefined, lane, badge, durationMinutes, attachments, nodeColor, locked },
+              draggable: !locked, deletable: !locked }
           : n
       )
       commit(updated, rfEdges)
@@ -575,6 +593,18 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
             <span className="opacity-40">|</span>
             <span className="opacity-60 text-[10px]">drag to move · Delete to remove</span>
             <button
+              onClick={() => handleLockSelected(true)}
+              className="text-amber-300 hover:text-amber-200 transition-colors"
+            >
+              🔒 Lock
+            </button>
+            <button
+              onClick={() => handleLockSelected(false)}
+              className="text-muted-foreground hover:text-background/80 transition-colors"
+            >
+              🔓 Unlock
+            </button>
+            <button
               onClick={handleDeleteSelected}
               className="text-red-300 hover:text-red-200 transition-colors"
             >
@@ -642,8 +672,8 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
       {editingNode && (
         <NodeEditDialog
           node={editingNode}
-          onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor) =>
-            handleEditSave(id, label, time, lane, badge, durationMinutes, attachments, nodeColor)
+          onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked) =>
+            handleEditSave(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked)
           }
           onDelete={() => { handleNodeDelete(editingNode.id); setEditingNode(null) }}
           onClose={() => setEditingNode(null)}

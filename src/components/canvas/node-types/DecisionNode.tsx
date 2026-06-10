@@ -19,6 +19,9 @@ export default function DecisionNode({ data }: NodeProps) {
 
   return (
     <div className="relative w-[120px] h-[60px] flex items-center justify-center">
+      {(data as any).locked && (
+        <span className="absolute top-0.5 left-1 text-[9px] leading-none opacity-60 z-10" title="Locked">🔒</span>
+      )}
       <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-amber-500 !left-0" />
       <div
         className="absolute inset-0 bg-amber-100 border-2 border-amber-400"
