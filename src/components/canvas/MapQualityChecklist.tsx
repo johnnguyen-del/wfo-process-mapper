@@ -115,16 +115,24 @@ export default function MapQualityChecklist({ processMap, activeLanes, domain }:
     }
   }
 
+  const SHORT_LABELS: Record<string, string> = {
+    'Swimlanes per team': 'Swimlanes',
+    'Time estimates': 'Times',
+    'Automation markers': 'Auto',
+    'Decision points': 'Decisions',
+    'Client comms': 'Comms',
+  }
+
   return (
     <div className="border-t shrink-0">
       {/* Existing checklist bar */}
-      <div className="bg-muted/20 px-4 py-2 flex items-center gap-4 overflow-x-auto">
-        <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-          Map quality: {metCount}/{applicable.length}
+      <div className="bg-muted/20 px-2 py-2 flex items-center gap-3 overflow-x-auto">
+        <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+          {metCount}/{applicable.length}
         </span>
-        <div className="flex gap-3 flex-1">
+        <div className="flex gap-2 flex-1">
           {criteria.map((c) => (
-            <div key={c.label} className="flex items-center gap-1 text-[11px] shrink-0">
+            <div key={c.label} className="flex items-center gap-1 text-[10px] shrink-0">
               {c.na ? (
                 <MinusCircle className="w-3 h-3 text-muted-foreground/40 shrink-0" />
               ) : c.met ? (
@@ -132,11 +140,15 @@ export default function MapQualityChecklist({ processMap, activeLanes, domain }:
               ) : (
                 <XCircle className="w-3 h-3 text-muted-foreground/60 shrink-0" />
               )}
-              <span className={cn(
-                c.na ? 'text-muted-foreground/50 line-through' :
-                c.met ? 'text-foreground' : 'text-muted-foreground'
-              )}>
-                {c.label}
+              <span
+                title={`${c.label}: ${c.hint}`}
+                className={cn(
+                  c.na ? 'text-muted-foreground/50 line-through' :
+                  c.met ? 'text-foreground' : 'text-muted-foreground',
+                  'whitespace-nowrap'
+                )}
+              >
+                {SHORT_LABELS[c.label] ?? c.label}
               </span>
             </div>
           ))}

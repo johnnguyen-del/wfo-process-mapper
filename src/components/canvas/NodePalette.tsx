@@ -30,19 +30,25 @@ export default function NodePalette({ onDragStart, onClickInsert }: NodePaletteP
   return (
     <div className="absolute left-1 top-2 z-10 flex flex-col gap-1 bg-background/90 backdrop-blur-sm border rounded-lg py-1.5 px-1 shadow-sm">
       {PALETTE_ITEMS.map((item) => (
-        <div
-          key={item.type}
-          draggable
-          onDragStart={() => onDragStart(item.type, item.defaultLane)}
-          onClick={() => onClickInsert(item.type, item.defaultLane)}
-          title={item.label}
-          className={cn(
-            'w-7 h-7 rounded border flex items-center justify-center cursor-pointer',
-            'hover:opacity-80 transition-opacity active:scale-95',
-            item.colorClass
-          )}
-        >
-          {item.icon}
+        <div key={item.type} className="relative group">
+          <div
+            draggable
+            onDragStart={() => onDragStart(item.type, item.defaultLane)}
+            onClick={() => onClickInsert(item.type, item.defaultLane)}
+            className={cn(
+              'w-7 h-7 rounded border flex items-center justify-center cursor-pointer',
+              'hover:opacity-80 transition-opacity active:scale-95',
+              item.colorClass
+            )}
+          >
+            {item.icon}
+          </div>
+          {/* Custom tooltip — appears to the right */}
+          <div className="absolute left-9 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-foreground text-background text-[10px] font-medium px-2 py-0.5 rounded whitespace-nowrap shadow-lg">
+              {item.label}
+            </div>
+          </div>
         </div>
       ))}
     </div>

@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import ProcessCanvas, { LANE_COLORS, LANE_LABEL_COLORS } from './ProcessCanvas'
 import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner, SwimLane } from '@/lib/types'
 import { computeMetrics } from '@/lib/metrics'
+import { cn } from '@/lib/utils'
 
 interface CompareViewProps {
   currentMap: ProcessMap
@@ -41,6 +42,59 @@ export default function CompareView({
   const [showStats, setShowStats] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<PanelId>>(new Set())
 
+  // Per-panel direction state (independent T→B / L→R per panel)
+  const [panelDirections, setPanelDirections] = useState<Record<PanelId, CanvasDirection>>({
+    current: direction,
+    interim: direction,
+    ideal: direction,
+  })
+
+  // Panel widths as percentages (used when panels are expanded)
+  const [panelWidths, setPanelWidths] = useState({ current: 33, interim: 34, ideal: 33 })
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragCleanupRef1 = useRef<(() => void) | null>(null)
+  const dragCleanupRef2 = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef1.current?.()
+      dragCleanupRef2.current?.()
+    }
+  }, [])
+
+  function startDrag(e: React.MouseEvent, panelA: PanelId, panelB: PanelId) {
+    e.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+    const containerWidth = container.getBoundingClientRect().width
+    const startX = e.clientX
+    const startA = panelWidths[panelA]
+    const startB = panelWidths[panelB]
+    document.body.style.cursor = 'col-resize'
+
+    function onMove(ev: MouseEvent) {
+      const deltaPct = ((ev.clientX - startX) / containerWidth) * 100
+      setPanelWidths(prev => ({
+        ...prev,
+        [panelA]: Math.max(10, Math.min(80, startA + deltaPct)),
+        [panelB]: Math.max(10, Math.min(80, startB - deltaPct)),
+      }))
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    dragCleanupRef1.current = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+    }
+  }
+
   const currentMetrics  = useMemo(() => computeMetrics(currentMap),      [currentMap])
   const interimMetrics  = useMemo(() => computeMetrics(interimMap),       [interimMap])
   const idealMetrics    = useMemo(() => computeMetrics(optimizationMap),  [optimizationMap])
@@ -78,10 +132,13 @@ export default function CompareView({
   function PanelWrapper({ id }: { id: PanelId }) {
     const cfg = PANEL_CONFIG[id]
     const col = isCollapsed(id)
+    const panelStyle = col
+      ? { width: `${COLLAPSED_WIDTH}px`, flex: '0 0 auto' as const }
+      : { flex: `${panelWidths[id]} 1 0%` }
     return (
       <div
         className="flex flex-col overflow-hidden transition-all duration-200"
-        style={{ width: col ? `${COLLAPSED_WIDTH}px` : undefined, flex: col ? '0 0 auto' : 1 }}
+        style={panelStyle}
       >
         {/* Panel header — click to collapse/expand */}
         <div
@@ -111,12 +168,12 @@ export default function CompareView({
               teamOwner={teamOwner}
               workato={workato}
               decagonL0={decagonL0}
-              direction={direction}
+              direction={panelDirections[id]}
               lineStyle={lineStyle}
               layoutKey={layoutKey}
               hideLegend
               onChange={onChanges[id]}
-              onRelayout={(dir) => onDirectionChange(dir)}
+              onRelayout={(dir) => setPanelDirections(prev => ({ ...prev, [id]: dir }))}
               onLineStyleChange={onLineStyleChange}
             />
           </div>
@@ -208,11 +265,37 @@ export default function CompareView({
       </div>
 
       {/* Three panels */}
-      <div className="flex flex-1 min-h-0">
+      <div ref={containerRef} className="flex flex-1 min-h-0">
         <PanelWrapper id="current" />
-        <div className="w-px bg-border shrink-0" />
+        {/* Drag handle between current and interim */}
+        <div
+          className={cn(
+            'w-1.5 shrink-0 bg-border transition-colors flex items-center justify-center group',
+            !isCollapsed('current') && !isCollapsed('interim')
+              ? 'cursor-col-resize hover:bg-indigo-400'
+              : 'cursor-default opacity-30'
+          )}
+          onMouseDown={(!isCollapsed('current') && !isCollapsed('interim'))
+            ? (e) => startDrag(e, 'current', 'interim')
+            : undefined}
+        >
+          <div className="w-0.5 h-7 rounded-full bg-muted-foreground/30 group-hover:bg-white/70 transition-colors" />
+        </div>
         <PanelWrapper id="interim" />
-        <div className="w-px bg-border shrink-0" />
+        {/* Drag handle between interim and ideal */}
+        <div
+          className={cn(
+            'w-1.5 shrink-0 bg-border transition-colors flex items-center justify-center group',
+            !isCollapsed('interim') && !isCollapsed('ideal')
+              ? 'cursor-col-resize hover:bg-indigo-400'
+              : 'cursor-default opacity-30'
+          )}
+          onMouseDown={(!isCollapsed('interim') && !isCollapsed('ideal'))
+            ? (e) => startDrag(e, 'interim', 'ideal')
+            : undefined}
+        >
+          <div className="w-0.5 h-7 rounded-full bg-muted-foreground/30 group-hover:bg-white/70 transition-colors" />
+        </div>
         <PanelWrapper id="ideal" />
       </div>
     </div>
