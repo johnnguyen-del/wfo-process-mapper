@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, X } from 'lucide-react'
 import type { KbLink, SwimLane, ProcessNode } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import KbLinksPanel from './KbLinksPanel'
 
 const LANES: SwimLane[] = ['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client']
@@ -38,7 +39,8 @@ interface NodeEditDialogProps {
     badge?: ProcessNode['badge'],
     durationMinutes?: number,
     attachments?: KbLink[],
-    nodeColor?: string
+    nodeColor?: string,
+    locked?: boolean
   ) => void
   onDelete: () => void
   onClose: () => void
@@ -57,6 +59,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
   )
   const [attachments, setAttachments] = useState<KbLink[]>((node.data as any).attachments ?? [])
   const [nodeColor, setNodeColor] = useState<string>((node.data as any).nodeColor ?? '')
+  const [locked, setLocked] = useState<boolean>((node.data as any).locked ?? false)
   const isSwimlane = node.type === 'swimlane'
   const isSticky = node.type === 'sticky'
 
@@ -153,6 +156,21 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
                 className="w-full border rounded px-2 py-1.5 text-sm"
               />
             </div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">Lock position</label>
+              <button
+                type="button"
+                onClick={() => setLocked(l => !l)}
+                className={cn(
+                  'text-xs px-2 py-1 rounded border transition-colors',
+                  locked
+                    ? 'bg-amber-100 border-amber-300 text-amber-700'
+                    : 'bg-background border-border text-muted-foreground hover:border-foreground/40'
+                )}
+              >
+                {locked ? '🔒 Locked' : '🔓 Unlocked'}
+              </button>
+            </div>
           </>
         )}
 
@@ -194,7 +212,7 @@ export default function NodeEditDialog({ node, onSave, onDelete, onClose }: Node
           <Trash2 className="w-3 h-3" />
           Delete
         </Button>
-        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined, attachments.length > 0 ? attachments : undefined, nodeColor || undefined)} className="flex-1">
+        <Button size="sm" onClick={() => onSave(node.id, label, timeEstimate, lane, { status: badgeStatus || undefined, priority: badgePriority || undefined }, durationMinutes !== '' ? Number(durationMinutes) : undefined, attachments.length > 0 ? attachments : undefined, nodeColor || undefined, locked || undefined)} className="flex-1">
           Save
         </Button>
       </div>

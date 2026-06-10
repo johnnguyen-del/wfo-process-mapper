@@ -22,6 +22,9 @@ export default function CommsNode({ data }: NodeProps) {
 
   return (
     <div className="relative rounded-lg border-2 border-indigo-300 bg-indigo-50 px-3 py-2 text-xs font-medium min-w-[110px] max-w-[160px] shadow-sm">
+      {(data as any).locked && (
+        <span className="absolute top-0.5 left-1 text-[9px] leading-none opacity-60" title="Locked">🔒</span>
+      )}
       <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-indigo-400" />
       {badge?.priority && (
         <span className={cn('absolute top-1 right-1 w-2 h-2 rounded-full', PRIORITY_COLORS[badge.priority] ?? '')} />
