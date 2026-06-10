@@ -575,6 +575,7 @@ export default function ProcessBuilder() {
                 direction={canvasDirection}
                 lineStyle={lineStyle}
                 canvasLabel="Current Flow"
+                domain={entry.domain || undefined}
                 onChange={(map) => patch({ processMap: map })}
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}
@@ -594,6 +595,7 @@ export default function ProcessBuilder() {
                   direction={canvasDirection}
                   lineStyle={lineStyle}
                   canvasLabel="Ideal Flow"
+                  domain={entry.domain || undefined}
                   onChange={(map) => patch({ optimizationMap: map })}
                   onRelayout={handleOptimizationRelayout}
                   onLineStyleChange={setLineStyle}
