@@ -261,6 +261,13 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showOutcomes, setShowOutcomes] = useState(false)
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [editingEdge, setEditingEdge] = useState<{
+    id: string
+    label: string
+    screenX: number
+    screenY: number
+  } | null>(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const idCounter = useRef(processMap.nodes.length + 1)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
@@ -305,7 +312,19 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
       const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' ||
         (e.target as HTMLElement)?.isContentEditable
+
+      if (e.key === 'Escape' && showShortcuts) {
+        setShowShortcuts(false)
+        return
+      }
+
       if (isEditable || readOnly) return
+
+      if (e.key === '?') {
+        e.preventDefault()
+        setShowShortcuts(s => !s)
+        return
+      }
 
       // Select All
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
@@ -380,7 +399,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
 
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [readOnly, direction, lineStyle])
+  }, [readOnly, direction, lineStyle, showShortcuts])
 
   // Auto-fit when nodes are imported (canvas remounts with pre-loaded nodes)
   useEffect(() => {
@@ -475,6 +494,48 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     if (!node.id.startsWith('lane-')) {
       setEditingNode(node)
     }
+  }
+
+  function handleEdgeDoubleClick(_e: React.MouseEvent, edge: Edge) {
+    if (readOnly) return
+    // Find midpoint between source and target node positions
+    const sourceNode = rfNodesRef.current.find(n => n.id === edge.source)
+    const targetNode = rfNodesRef.current.find(n => n.id === edge.target)
+    if (!sourceNode || !targetNode) return
+    const midFlow = {
+      x: (sourceNode.position.x + targetNode.position.x) / 2 + 100,
+      y: (sourceNode.position.y + targetNode.position.y) / 2 + 20,
+    }
+    // Convert flow coords to screen coords via the canvas container
+    const container = canvasContainerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    // Use the ReactFlow viewport to convert (read from the DOM transform)
+    const transform = container.querySelector('.react-flow__viewport') as HTMLElement | null
+    const style = transform ? window.getComputedStyle(transform) : null
+    const matrix = style ? new DOMMatrixReadOnly(style.transform) : null
+    const zoom = matrix ? matrix.a : 1
+    const tx = matrix ? matrix.e : 80
+    const ty = matrix ? matrix.f : 10
+    setEditingEdge({
+      id: edge.id,
+      label: typeof edge.label === 'string' ? edge.label : '',
+      screenX: rect.left + midFlow.x * zoom + tx,
+      screenY: rect.top + midFlow.y * zoom + ty,
+    })
+  }
+
+  function saveEdgeLabel(edgeId: string, newLabel: string) {
+    setRfEdges(prev => {
+      const updated = prev.map(e =>
+        e.id === edgeId
+          ? { ...e, label: newLabel.trim() || undefined }
+          : e
+      )
+      commit(fromRfNodes(rfNodesRef.current), fromRfEdges(updated))
+      return updated
+    })
+    setEditingEdge(null)
   }
 
   function handleDeleteSelected() {
@@ -656,6 +717,20 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
               <GitMerge className="w-3 h-3" /> Outcomes
             </button>
           )}
+          {!readOnly && (
+            <button
+              onClick={() => setShowShortcuts(s => !s)}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                showShortcuts
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
+              )}
+              title="Keyboard shortcuts (?)"
+            >
+              ⌨
+            </button>
+          )}
         </div>
       </div>
 
@@ -675,6 +750,72 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
             onHighlight={setHighlightedNodes}
             onClose={() => { setShowOutcomes(false); setHighlightedNodes(new Set()) }}
           />
+        )}
+        {editingEdge && (
+          <div
+            className="fixed z-50 bg-background border rounded-lg shadow-xl p-2 flex items-center gap-1.5"
+            style={{ left: editingEdge.screenX - 90, top: editingEdge.screenY - 20, minWidth: 200 }}
+          >
+            <input
+              autoFocus
+              value={editingEdge.label}
+              onChange={e => setEditingEdge(prev => prev ? { ...prev, label: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveEdgeLabel(editingEdge.id, editingEdge.label)
+                if (e.key === 'Escape') setEditingEdge(null)
+              }}
+              onBlur={() => saveEdgeLabel(editingEdge.id, editingEdge.label)}
+              placeholder="Edge label (e.g. Yes / No)"
+              className="flex-1 text-xs border-none outline-none bg-transparent min-w-0"
+            />
+            <button
+              onMouseDown={e => { e.preventDefault(); saveEdgeLabel(editingEdge.id, editingEdge.label) }}
+              className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+            >
+              ✓
+            </button>
+            <button
+              onMouseDown={e => { e.preventDefault(); setEditingEdge(null) }}
+              className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {showShortcuts && (
+          <div
+            className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+            onClick={() => setShowShortcuts(false)}
+          >
+            <div
+              className="bg-background border rounded-xl shadow-xl p-5 w-72 text-xs"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-semibold text-sm">Keyboard Shortcuts</span>
+                <button onClick={() => setShowShortcuts(false)} className="text-muted-foreground hover:text-foreground leading-none">✕</button>
+              </div>
+              <table className="w-full">
+                <tbody>
+                  {[
+                    ['Ctrl+Z', 'Undo'],
+                    ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
+                    ['Ctrl+C', 'Copy selected nodes'],
+                    ['Ctrl+V', 'Paste'],
+                    ['Ctrl+A', 'Select all'],
+                    ['Ctrl+S', 'Save'],
+                    ['Delete', 'Delete selected'],
+                    ['? or ⌨', 'Toggle this guide'],
+                  ].map(([key, action]) => (
+                    <tr key={key} className="border-b last:border-0">
+                      <td className="py-1.5 pr-4 font-mono text-muted-foreground text-[10px]">{key}</td>
+                      <td className="py-1.5">{action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
         {/* Multi-select toolbar — appears when nodes are selected */}
         {selectedCount > 0 && (
@@ -728,6 +869,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeDoubleClick={readOnly ? undefined : handleNodeDoubleClick}
+          onEdgeDoubleClick={readOnly ? undefined : handleEdgeDoubleClick}
           nodesDraggable={!readOnly}
           nodesConnectable={!readOnly}
           nodeTypes={NODE_TYPES}
