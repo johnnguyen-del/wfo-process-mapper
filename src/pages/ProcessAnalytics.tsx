@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BarChart2, ArrowUpDown } from 'lucide-react'
+import { BarChart2, ArrowUpDown, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { listEntries } from '@/lib/storage'
+import { listEntries, loadFolders } from '@/lib/storage'
 import { computeMetrics } from '@/lib/metrics'
-import type { ProcessEntry } from '@/lib/types'
+import type { ProcessEntry, FolderEntry } from '@/lib/types'
+
+const DOMAINS = ['Banking', 'Transfers', 'Invest', 'Security & Risk', 'PRR'] as const
 
 type SortKey = 'name' | 'touchpoints' | 'transitions' | 'duration'
 
@@ -20,10 +22,15 @@ interface Row {
 
 export default function ProcessAnalytics() {
   const [rows, setRows] = useState<Row[]>([])
+  const [folders, setFolders] = useState<FolderEntry[]>([])
   const [sortBy, setSortBy] = useState<SortKey>('duration')
   const [loading, setLoading] = useState(true)
+  const [filterDomain, setFilterDomain] = useState<string>('')
+  const [filterFolderId, setFilterFolderId] = useState<string>('')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
+    loadFolders().then(setFolders)
     listEntries().then(entries => {
       setRows(
         entries.map(entry => {
@@ -42,7 +49,19 @@ export default function ProcessAnalytics() {
     }).catch(() => setLoading(false))
   }, [])
 
-  const sorted = [...rows].sort((a, b) => {
+  // Filter out soft-deleted, apply domain/folder/search filters
+  const filtered = rows.filter(({ entry }) => {
+    if (entry.deletedAt) return false
+    if (filterDomain && entry.domain !== filterDomain) return false
+    if (filterFolderId && entry.folderId !== filterFolderId) return false
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      return (entry.processName?.toLowerCase().includes(q) || (entry.domain ?? '').toLowerCase().includes(q))
+    }
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'name') return (a.entry.processName || '').localeCompare(b.entry.processName || '')
     if (sortBy === 'touchpoints') return b.totalTouchpoints - a.totalTouchpoints || (a.entry.processName || '').localeCompare(b.entry.processName || '')
     if (sortBy === 'transitions') return b.totalTransitions - a.totalTransitions || (a.entry.processName || '').localeCompare(b.entry.processName || '')
@@ -60,6 +79,45 @@ export default function ProcessAnalytics() {
       </div>
 
       <div className="p-6 max-w-5xl mx-auto">
+        {/* Filter controls */}
+        <div className="flex flex-wrap gap-2 mb-3 items-center">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search processes…"
+              className="pl-8 pr-3 py-1 text-xs rounded border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring w-48"
+            />
+          </div>
+
+          <select
+            value={filterDomain}
+            onChange={e => setFilterDomain(e.target.value)}
+            className="px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="">All Domains</option>
+            {DOMAINS.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          {folders.length > 0 && (
+            <select
+              value={filterFolderId}
+              onChange={e => setFilterFolderId(e.target.value)}
+              className="px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">All Folders</option>
+              {folders.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Sort controls + result count */}
         <div className="flex gap-2 mb-4 items-center">
           <span className="text-xs text-muted-foreground">Sort by:</span>
           {([
@@ -82,6 +140,11 @@ export default function ProcessAnalytics() {
               {sortBy === key && <ArrowUpDown className="w-3 h-3" />}
             </button>
           ))}
+          {!loading && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              {filtered.length} process{filtered.length !== 1 ? 'es' : ''}
+            </span>
+          )}
         </div>
 
         {loading && (
