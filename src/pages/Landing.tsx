@@ -96,13 +96,6 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Footer note */}
-      <div className="border-t px-6 py-4 text-center">
-        <p className="text-xs text-muted-foreground">
-          Built for the WFO Banking Pod · Questions? Tag{' '}
-          <span className="font-medium text-foreground">@johnnguyen</span> in Slack
-        </p>
-      </div>
     </div>
   )
 }

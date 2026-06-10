@@ -28,7 +28,7 @@ function ThemeToggle() {
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+    <ThemeProvider attribute="data-theme" defaultTheme="light" disableTransitionOnChange>
       <HashRouter>
         <ErrorBoundary>
           <div className="min-h-screen bg-background text-foreground">

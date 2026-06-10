@@ -12,7 +12,7 @@
  */
 @plugin "@tailwindcss/typography";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="dark"] *), &:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
