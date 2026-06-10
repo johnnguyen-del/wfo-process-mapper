@@ -550,6 +550,40 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setDraggingType(null)
   }
 
+  function handleClickInsert(type: ProcessNodeType, defaultLane: SwimLane) {
+    if (readOnly) return
+    const container = canvasContainerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const centerScreen = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    const flowPos = screenToFlowPosition(centerScreen)
+
+    const isAnnotation = type === 'swimlane' || type === 'sticky'
+    const lane = isAnnotation ? defaultLane : laneYFromFlowY(flowPos.y, lanes)
+    const yPos = isAnnotation ? flowPos.y : laneYCenter(lanes, lane)
+
+    const baseStyle = type === 'swimlane' ? { width: 400, height: 200 } : {}
+    const newNode: Node = {
+      id: `n${idCounter.current++}`,
+      type,
+      position: { x: flowPos.x - 80, y: yPos },
+      zIndex: type === 'sticky' ? 10 : type === 'swimlane' ? -1 : 0,
+      style: Object.keys(baseStyle).length > 0 ? baseStyle : undefined,
+      data: {
+        label: type === 'swimlane' ? 'Lane' : type === 'sticky' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
+        lane,
+        type,
+        showTimes,
+        nodeColor: type === 'swimlane' ? '#dbeafe' : type === 'sticky' ? '#fef9c3' : undefined,
+      },
+    }
+    setRfNodes(prev => {
+      const updated = [...prev, newNode]
+      commit(updated, rfEdges)
+      return updated
+    })
+  }
+
   function handleNodeDoubleClick(_e: React.MouseEvent, node: Node) {
     // Double-click opens edit dialog — single click is used for selection
     if (!node.id.startsWith('lane-')) {
@@ -715,45 +749,43 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           <button
             onClick={handleToggleTimes}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               showTimes ? 'bg-foreground text-background border-foreground' : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
+            title={showTimes ? 'Hide times' : 'Show times'}
           >
             <Clock className="w-3 h-3" />
-            {showTimes ? 'Hiding times' : 'Show times'}
           </button>
 
           {/* Direction toggle */}
           <button
             onClick={() => onRelayout(direction === 'LR' ? 'TB' : 'LR')}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
-            title={direction === 'LR' ? 'Switch to top-down layout' : 'Switch to left-right layout'}
+            title={direction === 'LR' ? 'Switch to top-down' : 'Switch to left-right'}
           >
             {direction === 'LR' ? <ArrowRight className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-            {direction === 'LR' ? 'L→R' : 'T→B'}
           </button>
 
           {/* Line style toggle */}
           <button
             onClick={() => onLineStyleChange(lineStyle === 'default' ? 'step' : 'default')}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               lineStyle === 'step'
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
-            title={lineStyle === 'step' ? 'Switch to curved lines' : 'Switch to straight lines'}
+            title={lineStyle === 'step' ? 'Curved lines' : 'Straight lines'}
           >
             <GitBranch className="w-3 h-3" />
-            {lineStyle === 'step' ? 'Straight' : 'Curved'}
           </button>
           <button
             onClick={handleFullscreen}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               isFullscreen
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
@@ -765,42 +797,43 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           {!readOnly && rfNodes.length > 0 && (
             <button
               onClick={handleExportPng}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
-              title="Export canvas as PNG"
+              className="flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
+              title="Export PNG"
             >
               <Download className="w-3 h-3" />
-              PNG
             </button>
           )}
           <button
             onClick={() => setShowMetrics(s => !s)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               showMetrics
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
+            title="Metrics"
           >
-            <BarChart2 className="w-3 h-3" /> Metrics
+            <BarChart2 className="w-3 h-3" />
           </button>
           {!readOnly && (
             <button
               onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) { setHighlightedNodes(new Set()); setIsolateMode(false) } }}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
                 showOutcomes
                   ? 'bg-foreground text-background border-foreground'
                   : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
               )}
+              title="Outcomes"
             >
-              <GitMerge className="w-3 h-3" /> Outcomes
+              <GitMerge className="w-3 h-3" />
             </button>
           )}
           {!readOnly && (
             <button
               onClick={() => setShowShortcuts(s => !s)}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
                 showShortcuts
                   ? 'bg-foreground text-background border-foreground'
                   : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
@@ -979,7 +1012,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           )}
         </ReactFlow>
 
-        {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
+        {!readOnly && <NodePalette
+          onDragStart={(type, lane) => setDraggingType({ type, lane })}
+          onClickInsert={handleClickInsert}
+        />}
       </div>
 
       <MapQualityChecklist processMap={processMap} activeLanes={lanes} domain={domain} />

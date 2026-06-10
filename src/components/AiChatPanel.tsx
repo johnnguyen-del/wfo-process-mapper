@@ -9,9 +9,11 @@ import { cn } from '@/lib/utils'
 
 interface AiChatPanelProps {
   onApply: (patch: FormFillPatch) => void
+  viewMode?: string
+  onApplyToCanvas?: (patch: FormFillPatch, target: 'current' | 'interim' | 'ideal') => void
 }
 
-export default function AiChatPanel({ onApply }: AiChatPanelProps) {
+export default function AiChatPanel({ onApply, viewMode, onApplyToCanvas }: AiChatPanelProps) {
   const [mode, setMode] = useState<'stream' | 'paste'>('stream')
   const [messages, setMessages] = useState<AiMessage[]>([])
   const [input, setInput] = useState('')
@@ -22,6 +24,7 @@ export default function AiChatPanel({ onApply }: AiChatPanelProps) {
   const [lastPatch, setLastPatch] = useState<FormFillPatch | null>(null)
   const [applied, setApplied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingPatch, setPendingPatch] = useState<FormFillPatch | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const hasMessages = messages.length > 0
@@ -91,6 +94,10 @@ export default function AiChatPanel({ onApply }: AiChatPanelProps) {
       return
     }
     try {
+      if (viewMode === 'compare') {
+        setPendingPatch(parsed)
+        return
+      }
       onApply(parsed)
       setApplied(true)
       setPasteInput('')
@@ -102,6 +109,10 @@ export default function AiChatPanel({ onApply }: AiChatPanelProps) {
 
   function handleApply() {
     if (!lastPatch) return
+    if (viewMode === 'compare') {
+      setPendingPatch(lastPatch)
+      return
+    }
     onApply(lastPatch)
     setApplied(true)
   }
@@ -117,6 +128,37 @@ export default function AiChatPanel({ onApply }: AiChatPanelProps) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Canvas selector — shown in compare mode after applying */}
+      {pendingPatch && (
+        <div className="border-t p-3 bg-violet-50 shrink-0">
+          <p className="text-xs font-medium text-violet-700 mb-2">Apply to which canvas?</p>
+          <div className="flex flex-col gap-1.5">
+            {([
+              { id: 'current', label: 'Current Flow' },
+              { id: 'interim', label: '⚡ Interim Fixed' },
+              { id: 'ideal', label: '✦ Long-term Ideal' },
+            ] as { id: 'current' | 'interim' | 'ideal'; label: string }[]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  onApplyToCanvas?.(pendingPatch, id)
+                  setPendingPatch(null)
+                  setApplied(true)
+                }}
+                className="text-xs text-left px-3 py-1.5 rounded border bg-white hover:bg-violet-50 transition-colors font-medium"
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={() => setPendingPatch(null)}
+              className="text-xs text-muted-foreground hover:text-foreground mt-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header + mode tabs */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
         <div className="flex items-center gap-1.5 text-sm font-medium">

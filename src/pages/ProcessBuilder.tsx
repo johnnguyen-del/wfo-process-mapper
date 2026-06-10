@@ -530,7 +530,30 @@ export default function ProcessBuilder() {
           {leftTab === 'details' ? (
             <DetailsTab entry={entry} />
           ) : leftTab === 'ai' ? (
-            <AiChatPanel onApply={handleAiApply} />
+            <AiChatPanel
+              onApply={handleAiApply}
+              viewMode={viewMode}
+              onApplyToCanvas={(fillPatch, target) => {
+                const processMapPatch = fillPatch.processMap
+                if (target === 'current') {
+                  handleAiApply(fillPatch)
+                } else if (target === 'interim') {
+                  if (processMapPatch) patch({ interimMap: processMapPatch })
+                  const { processMap: _pm, ...rest } = fillPatch
+                  if (Object.keys(rest).length) patch(rest as Partial<ProcessEntry>)
+                  setLeftTab('form')
+                  setStep(1)
+                  toast.success('Applied to Interim Fixed flow')
+                } else {
+                  if (processMapPatch) patch({ optimizationMap: processMapPatch })
+                  const { processMap: _pm, ...rest } = fillPatch
+                  if (Object.keys(rest).length) patch(rest as Partial<ProcessEntry>)
+                  setLeftTab('form')
+                  setStep(1)
+                  toast.success('Applied to Long-term Ideal flow')
+                }
+              }}
+            />
           ) : (
             <>
               <WizardShell step={step} onStepClick={setStep}>
