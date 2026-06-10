@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Node } from '@xyflow/react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sparkles, FormInput, CheckCircle, ExternalLink, History } from 'lucide-react'
@@ -12,6 +13,7 @@ import CommsStep from '@/components/wizard/CommsStep'
 import TaxonomyStep from '@/components/wizard/TaxonomyStep'
 import ReviewStep from '@/components/wizard/ReviewStep'
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
+import NodeEditDialog from '@/components/canvas/NodeEditDialog'
 import CompareView from '@/components/canvas/CompareView'
 import AiChatPanel from '@/components/AiChatPanel'
 import DetailsTab from '@/components/wizard/DetailsTab'
@@ -76,6 +78,13 @@ export default function ProcessBuilder() {
   const getCanvasMapRef = useRef<(() => ProcessMap) | null>(null)
   const historyRef = useRef<ProcessMap[]>([])
   const historyIdxRef = useRef<number>(-1)
+
+  // External NodeEditDialog — overlays the left panel instead of the canvas
+  const [externalEditingNode, setExternalEditingNode] = useState<Node | null>(null)
+  const editHandlerRef = useRef<{
+    save: (id: string, label: string, timeEstimate: string, lane: any, badge?: any, durationMinutes?: number, attachments?: any[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  } | null>(null)
 
   // Seed history with the initial empty canvas state so the very first
   // canvas action is always undoable.
@@ -448,7 +457,7 @@ export default function ProcessBuilder() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Form / AI tabs */}
         <div
-          className="border-r flex flex-col overflow-hidden shrink-0"
+          className="relative border-r flex flex-col overflow-hidden shrink-0"
           style={{ width: leftWidth, minWidth: 280 }}
         >
           {/* Tab bar — same pattern as PlaybookStudio's Visual/DSL/Chat tabs */}
@@ -519,6 +528,25 @@ export default function ProcessBuilder() {
               </div>
             </>
           )}
+
+          {/* Node edit overlay — sits over the left panel, canvas stays fully visible */}
+          {externalEditingNode && (
+            <div className="absolute inset-0 z-50 bg-background border-r overflow-y-auto">
+              <NodeEditDialog
+                node={externalEditingNode}
+                inline
+                onSave={(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked) => {
+                  editHandlerRef.current?.save(id, label, time, lane, badge, durationMinutes, attachments, nodeColor, locked)
+                  setExternalEditingNode(null)
+                }}
+                onDelete={() => {
+                  editHandlerRef.current?.delete(externalEditingNode.id)
+                  setExternalEditingNode(null)
+                }}
+                onClose={() => setExternalEditingNode(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Indigo drag handle — Form ↔ Canvas */}
@@ -552,6 +580,8 @@ export default function ProcessBuilder() {
                 onLineStyleChange={setLineStyle}
                 layoutKey={layoutKey}
                 onRegisterGetter={(getter) => { getCanvasMapRef.current = getter }}
+                onNodeEdit={(node) => setExternalEditingNode(node)}
+                onRegisterEditHandler={(handler) => { editHandlerRef.current = handler }}
               />
             )}
             {viewMode === 'optimization' && (

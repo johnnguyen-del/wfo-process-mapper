@@ -251,9 +251,14 @@ interface CanvasInnerProps {
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
   onRegisterGetter?: (getter: () => ProcessMap) => void
+  onNodeEdit?: (node: Node) => void
+  onRegisterEditHandler?: (handler: {
+    save: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  }) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, onChange, onRelayout, onLineStyleChange, onRegisterGetter }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -292,6 +297,15 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
       nodes: fromRfNodes(rfNodesRef.current),
       edges: fromRfEdges(rfEdgesRef.current),
     }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register save/delete handlers so ProcessBuilder can call back into CanvasInner
+  // when it owns the NodeEditDialog (external edit mode via onNodeEdit prop).
+  useEffect(() => {
+    onRegisterEditHandler?.({
+      save: handleEditSave,
+      delete: (id: string) => { handleNodeDelete(id) },
+    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFullscreen() {
@@ -532,7 +546,11 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   function handleNodeDoubleClick(_e: React.MouseEvent, node: Node) {
     // Double-click opens edit dialog — single click is used for selection
     if (!node.id.startsWith('lane-')) {
-      setEditingNode(node)
+      if (onNodeEdit) {
+        onNodeEdit(node)
+      } else {
+        setEditingNode(node)
+      }
     }
   }
 
@@ -986,9 +1004,16 @@ interface ProcessCanvasProps {
   // Registers a getter that ProcessBuilder can call at save time to read
   // the current canvas state directly from rfNodes, bypassing entry.processMap
   onRegisterGetter?: (getter: () => ProcessMap) => void
+  /** When provided, CanvasInner will call this instead of opening its own dialog */
+  onNodeEdit?: (node: Node) => void
+  /** Registers save/delete handlers so the external dialog owner can call back into CanvasInner */
+  onRegisterEditHandler?: (handler: {
+    save: (id: string, label: string, timeEstimate: string, lane: SwimLane, badge?: ProcessNode['badge'], durationMinutes?: number, attachments?: KbLink[], nodeColor?: string, locked?: boolean) => void
+    delete: (id: string) => void
+  }) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
   const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
@@ -1024,6 +1049,8 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}
         onRegisterGetter={onRegisterGetter}
+        onNodeEdit={onNodeEdit}
+        onRegisterEditHandler={onRegisterEditHandler}
       />
     </ReactFlowProvider>
   )
