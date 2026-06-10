@@ -12,10 +12,14 @@ interface CompareViewProps {
   teamOwner: TeamOwner[]
   workato: boolean
   decagonL0: boolean
+  layoutKey?: number
   compareSplit: number
   onCompareSplitChange: (pct: number, persist?: boolean) => void
   onLineStyleChange: (style: LineStyle) => void
   onDirectionChange: (dir: CanvasDirection) => void
+  onCurrentChange: (map: ProcessMap) => void
+  onInterimChange: (map: ProcessMap) => void
+  onIdealChange: (map: ProcessMap) => void
 }
 
 type PanelId = 'current' | 'interim' | 'ideal'
@@ -31,7 +35,8 @@ const COLLAPSED_WIDTH = 28
 export default function CompareView({
   currentMap, optimizationMap, interimMap,
   direction, lineStyle, teamOwner, workato, decagonL0,
-  compareSplit, onCompareSplitChange, onLineStyleChange, onDirectionChange,
+  layoutKey, compareSplit, onCompareSplitChange, onLineStyleChange, onDirectionChange,
+  onCurrentChange, onInterimChange, onIdealChange,
 }: CompareViewProps) {
   const [showStats, setShowStats] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<PanelId>>(new Set())
@@ -64,6 +69,11 @@ export default function CompareView({
     interim: interimMap,
     ideal: optimizationMap,
   }
+  const onChanges: Record<PanelId, (map: ProcessMap) => void> = {
+    current: onCurrentChange,
+    interim: onInterimChange,
+    ideal: onIdealChange,
+  }
 
   function PanelWrapper({ id }: { id: PanelId }) {
     const cfg = PANEL_CONFIG[id]
@@ -73,7 +83,7 @@ export default function CompareView({
         className="flex flex-col overflow-hidden transition-all duration-200"
         style={{ width: col ? `${COLLAPSED_WIDTH}px` : undefined, flex: col ? '0 0 auto' : 1 }}
       >
-        {/* Panel header */}
+        {/* Panel header — click to collapse/expand */}
         <div
           className={`px-2 py-1.5 flex items-center justify-between shrink-0 cursor-pointer select-none ${cfg.headerClass}`}
           onClick={() => toggleCollapse(id)}
@@ -93,9 +103,9 @@ export default function CompareView({
             </>
           )}
         </div>
-        {/* Canvas */}
+        {/* Editable canvas — double-click nodes to edit, local dialog appears */}
         {!col && (
-          <div className="flex-1 relative">
+          <div className="flex-1 relative overflow-hidden">
             <ProcessCanvas
               processMap={maps[id]}
               teamOwner={teamOwner}
@@ -103,8 +113,8 @@ export default function CompareView({
               decagonL0={decagonL0}
               direction={direction}
               lineStyle={lineStyle}
-              readOnly
-              onChange={noOp}
+              layoutKey={layoutKey}
+              onChange={onChanges[id]}
               onRelayout={(dir) => onDirectionChange(dir)}
               onLineStyleChange={onLineStyleChange}
             />

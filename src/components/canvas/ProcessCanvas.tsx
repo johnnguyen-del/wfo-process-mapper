@@ -664,7 +664,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   }
 
   return (
-    <div className="flex flex-col h-full" ref={canvasContainerRef}>
+    <div className="flex flex-col h-full min-h-0 overflow-hidden" ref={canvasContainerRef}>
       {/* Canvas toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/20 shrink-0 gap-2">
         {/* Lane legend + optional label chip */}

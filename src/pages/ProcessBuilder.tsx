@@ -692,10 +692,14 @@ export default function ProcessBuilder() {
                 teamOwner={entry.teamOwner}
                 workato={entry.workato}
                 decagonL0={entry.decagonL0}
+                layoutKey={layoutKey}
                 compareSplit={compareSplit}
                 onCompareSplitChange={handleCompareSplitChange}
                 onLineStyleChange={setLineStyle}
-                onDirectionChange={setCanvasDirection}
+                onDirectionChange={(dir) => { setCanvasDirection(dir); setLayoutKey(k => k + 1) }}
+                onCurrentChange={(map) => patch({ processMap: map })}
+                onInterimChange={(map) => patch({ interimMap: map })}
+                onIdealChange={(map) => patch({ optimizationMap: map })}
               />
             )}
           </div>
