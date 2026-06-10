@@ -108,6 +108,8 @@ function toRfNodes(nodes: ProcessNode[], direction: CanvasDirection = 'LR'): Nod
       attachments: n.attachments,
       nodeColor: n.nodeColor,
       locked: n.locked,
+      sourcePosition: sourcePos,
+      targetPosition: targetPos,
     },
   }))
 }
@@ -248,6 +250,8 @@ interface CanvasInnerProps {
   readOnly?: boolean
   colorMode?: 'light' | 'dark'
   domain?: string
+  initialHighlight?: Set<string>
+  hideLegend?: boolean
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -259,7 +263,7 @@ interface CanvasInnerProps {
   }) => void
 }
 
-function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
+function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, readOnly = false, colorMode, domain, initialHighlight, hideLegend, onChange, onRelayout, onLineStyleChange, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: CanvasInnerProps) {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(toRfNodes(processMap.nodes, direction))
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(toRfEdges(processMap.edges, lineStyle))
@@ -268,7 +272,9 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   const [showTimes, setShowTimes] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
   const [showOutcomes, setShowOutcomes] = useState(false)
-  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(
+    () => initialHighlight && initialHighlight.size > 0 ? new Set(initialHighlight) : new Set()
+  )
   const [isolateMode, setIsolateMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [editingEdge, setEditingEdge] = useState<{
@@ -544,6 +550,40 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     setDraggingType(null)
   }
 
+  function handleClickInsert(type: ProcessNodeType, defaultLane: SwimLane) {
+    if (readOnly) return
+    const container = canvasContainerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const centerScreen = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    const flowPos = screenToFlowPosition(centerScreen)
+
+    const isAnnotation = type === 'swimlane' || type === 'sticky'
+    const lane = isAnnotation ? defaultLane : laneYFromFlowY(flowPos.y, lanes)
+    const yPos = isAnnotation ? flowPos.y : laneYCenter(lanes, lane)
+
+    const baseStyle = type === 'swimlane' ? { width: 400, height: 200 } : {}
+    const newNode: Node = {
+      id: `n${idCounter.current++}`,
+      type,
+      position: { x: flowPos.x - 80, y: yPos },
+      zIndex: type === 'sticky' ? 10 : type === 'swimlane' ? -1 : 0,
+      style: Object.keys(baseStyle).length > 0 ? baseStyle : undefined,
+      data: {
+        label: type === 'swimlane' ? 'Lane' : type === 'sticky' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
+        lane,
+        type,
+        showTimes,
+        nodeColor: type === 'swimlane' ? '#dbeafe' : type === 'sticky' ? '#fef9c3' : undefined,
+      },
+    }
+    setRfNodes(prev => {
+      const updated = [...prev, newNode]
+      commit(updated, rfEdges)
+      return updated
+    })
+  }
+
   function handleNodeDoubleClick(_e: React.MouseEvent, node: Node) {
     // Double-click opens edit dialog — single click is used for selection
     if (!node.id.startsWith('lane-')) {
@@ -661,7 +701,7 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   }
 
   return (
-    <div className="flex flex-col h-full" ref={canvasContainerRef}>
+    <div className="flex flex-col h-full min-h-0 overflow-hidden" ref={canvasContainerRef}>
       {/* Canvas toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/20 shrink-0 gap-2">
         {/* Lane legend + optional label chip */}
@@ -671,79 +711,81 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
               {canvasLabel}
             </span>
           )}
-          {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
-            <span key={lane} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: LANE_LABEL_COLORS[lane] }}>
-              <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane], border: `1.5px solid ${LANE_LABEL_COLORS[lane]}` }} />
-              {lane}
-            </span>
-          ))}
-          {/* Separator + node type chips */}
-          <span className="text-muted-foreground/30 text-[10px] select-none">|</span>
-          {[
-            { label: 'Start/End', color: '#f97316' },
-            { label: 'Step', color: '#3b82f6' },
-            { label: 'Decision', color: '#a855f7', diamond: true },
-            { label: 'Auto', color: '#10b981' },
-            { label: 'Comms', color: '#f59e0b' },
-            { label: 'Lane', color: '#1d4ed8' },
-            { label: 'Note', color: '#fde047' },
-          ].map(({ label, color, diamond }) => (
-            <span key={label} className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
-              <span
-                className="w-2 h-2 inline-block shrink-0"
-                style={{
-                  backgroundColor: color,
-                  borderRadius: diamond ? 0 : 2,
-                  transform: diamond ? 'rotate(45deg)' : undefined,
-                }}
-              />
-              {label}
-            </span>
-          ))}
+          {!hideLegend && (
+            <>
+              {(['CS', 'Ops', 'Fraud Ops', 'L2 - Risk', 'Automation', 'Client'] as const).map(lane => (
+                <span key={lane} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: LANE_LABEL_COLORS[lane] }}>
+                  <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: LANE_COLORS[lane], border: `1.5px solid ${LANE_LABEL_COLORS[lane]}` }} />
+                  {lane}
+                </span>
+              ))}
+              {/* Separator + node type chips */}
+              <span className="text-muted-foreground/30 text-[10px] select-none">|</span>
+              {[
+                { label: 'Start/End', color: '#f97316' },
+                { label: 'Step', color: '#3b82f6' },
+                { label: 'Decision', color: '#a855f7', diamond: true },
+                { label: 'Auto', color: '#10b981' },
+                { label: 'Comms', color: '#f59e0b' },
+                { label: 'Lane', color: '#1d4ed8' },
+                { label: 'Note', color: '#fde047' },
+              ].map(({ label, color, diamond }) => (
+                <span key={label} className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                  <span
+                    className="w-2 h-2 inline-block shrink-0"
+                    style={{
+                      backgroundColor: color,
+                      borderRadius: diamond ? 0 : 2,
+                      transform: diamond ? 'rotate(45deg)' : undefined,
+                    }}
+                  />
+                  {label}
+                </span>
+              ))}
+            </>
+          )}
         </div>
         <div className="flex gap-2 shrink-0">
           <button
             onClick={handleToggleTimes}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               showTimes ? 'bg-foreground text-background border-foreground' : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
+            title={showTimes ? 'Hide times' : 'Show times'}
           >
             <Clock className="w-3 h-3" />
-            {showTimes ? 'Hiding times' : 'Show times'}
           </button>
 
           {/* Direction toggle */}
           <button
             onClick={() => onRelayout(direction === 'LR' ? 'TB' : 'LR')}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
-            title={direction === 'LR' ? 'Switch to top-down layout' : 'Switch to left-right layout'}
+            title={direction === 'LR' ? 'Switch to top-down' : 'Switch to left-right'}
           >
             {direction === 'LR' ? <ArrowRight className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-            {direction === 'LR' ? 'L→R' : 'T→B'}
           </button>
 
           {/* Line style toggle */}
           <button
             onClick={() => onLineStyleChange(lineStyle === 'default' ? 'step' : 'default')}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               lineStyle === 'step'
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
-            title={lineStyle === 'step' ? 'Switch to curved lines' : 'Switch to straight lines'}
+            title={lineStyle === 'step' ? 'Curved lines' : 'Straight lines'}
           >
             <GitBranch className="w-3 h-3" />
-            {lineStyle === 'step' ? 'Straight' : 'Curved'}
           </button>
           <button
             onClick={handleFullscreen}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               isFullscreen
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
@@ -755,42 +797,43 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           {!readOnly && rfNodes.length > 0 && (
             <button
               onClick={handleExportPng}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
-              title="Export canvas as PNG"
+              className="flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors bg-background text-muted-foreground border-border hover:border-foreground/40"
+              title="Export PNG"
             >
               <Download className="w-3 h-3" />
-              PNG
             </button>
           )}
           <button
             onClick={() => setShowMetrics(s => !s)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+              'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
               showMetrics
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
             )}
+            title="Metrics"
           >
-            <BarChart2 className="w-3 h-3" /> Metrics
+            <BarChart2 className="w-3 h-3" />
           </button>
           {!readOnly && (
             <button
               onClick={() => { setShowOutcomes(s => !s); if (showOutcomes) { setHighlightedNodes(new Set()); setIsolateMode(false) } }}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
                 showOutcomes
                   ? 'bg-foreground text-background border-foreground'
                   : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
               )}
+              title="Outcomes"
             >
-              <GitMerge className="w-3 h-3" /> Outcomes
+              <GitMerge className="w-3 h-3" />
             </button>
           )}
           {!readOnly && (
             <button
               onClick={() => setShowShortcuts(s => !s)}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                'flex items-center justify-center p-1.5 rounded text-xs font-medium border transition-colors',
                 showShortcuts
                   ? 'bg-foreground text-background border-foreground'
                   : 'bg-background text-muted-foreground border-border hover:border-foreground/40'
@@ -947,10 +990,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           defaultViewport={{ x: 80, y: 10, zoom: 0.9 }}
           deleteKeyCode={readOnly ? null : 'Delete'}
           multiSelectionKeyCode="Shift"
-          selectionKeyCode="Shift"
           selectionOnDrag
-          panOnDrag={[0, 1, 2]}
+          panOnDrag={[1, 2]}
           panOnScroll={true}
+          panActivationKeyCode="Space"
           onNodesDelete={readOnly ? undefined : (deleted) => deleted.forEach((n) => handleNodeDelete(n.id))}
           colorMode={colorMode ?? 'light'}
           style={{ background: 'transparent' }}
@@ -969,7 +1012,10 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
           )}
         </ReactFlow>
 
-        {!readOnly && <NodePalette onDragStart={(type, lane) => setDraggingType({ type, lane })} />}
+        {!readOnly && <NodePalette
+          onDragStart={(type, lane) => setDraggingType({ type, lane })}
+          onClickInsert={handleClickInsert}
+        />}
       </div>
 
       <MapQualityChecklist processMap={processMap} activeLanes={lanes} domain={domain} />
@@ -999,6 +1045,8 @@ interface ProcessCanvasProps {
   readOnly?: boolean
   colorMode?: 'light' | 'dark'
   domain?: string
+  initialHighlight?: Set<string>
+  hideLegend?: boolean
   onChange: (map: ProcessMap) => void
   onRelayout: (direction: CanvasDirection) => void
   onLineStyleChange: (style: LineStyle) => void
@@ -1015,7 +1063,7 @@ interface ProcessCanvasProps {
   }) => void
 }
 
-export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
+export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL0, direction, lineStyle, canvasLabel, readOnly, domain, initialHighlight, hideLegend, onChange, onRelayout, onLineStyleChange, layoutKey, onRegisterGetter, onNodeEdit, onRegisterEditHandler }: ProcessCanvasProps) {
   const { resolvedTheme } = useTheme()
   // When imported nodes exist, always show ALL_LANES so node y-positions match
   // the fixed LANE_Y constants (CS=60, Ops=220, Fraud Ops=380, L2-Risk=540, Automation=700, Client=860).
@@ -1048,6 +1096,8 @@ export default function ProcessCanvas({ processMap, teamOwner, workato, decagonL
         readOnly={readOnly}
         colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
         domain={domain}
+        initialHighlight={initialHighlight}
+        hideLegend={hideLegend}
         onChange={onChange}
         onRelayout={onRelayout}
         onLineStyleChange={onLineStyleChange}

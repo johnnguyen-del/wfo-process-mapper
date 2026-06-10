@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Node } from '@xyflow/react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sparkles, FormInput, CheckCircle, ExternalLink, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -85,6 +85,10 @@ export default function ProcessBuilder() {
     save: (id: string, label: string, timeEstimate: string, lane: any, badge?: any, durationMinutes?: number, attachments?: any[], nodeColor?: string, locked?: boolean) => void
     delete: (id: string) => void
   } | null>(null)
+  // Per-panel handlers for Compare mode — keyed by panel ID ('current'|'interim'|'ideal')
+  const compareEditHandlersRef = useRef<Record<string, typeof editHandlerRef.current>>({
+    current: null, interim: null, ideal: null,
+  })
 
   // Seed history with the initial empty canvas state so the very first
   // canvas action is always undoable.
@@ -140,6 +144,16 @@ export default function ProcessBuilder() {
   const justAutoSavedRef = useRef(false)
   const [folders, setFolders] = useState<FolderEntry[]>([])
   const [autoSaving, setAutoSaving] = useState(false)
+
+  const [searchParams] = useSearchParams()
+
+  // Read path highlight from URL — only on mount, intentionally empty deps
+  const initialHighlight = useMemo(() => {
+    const pathParam = searchParams.get('path')
+    if (!pathParam) return undefined
+    const ids = pathParam.split(',').filter(Boolean)
+    return ids.length > 0 ? new Set(ids) : undefined
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (id) {
@@ -361,7 +375,7 @@ export default function ProcessBuilder() {
 
   function renderStep() {
     switch (step) {
-      case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/')} />
+      case 0: return <WorthMappingGate onYes={() => setStep(1)} onNo={() => navigate('/processes')} />
       case 1: return <CoreIdentityStep entry={entry} onChange={patch} />
       case 2: return <VolumeToolingStep entry={entry} onChange={patch} />
       case 3: return <AutomationStep entry={entry} onChange={patch} />
@@ -393,7 +407,7 @@ export default function ProcessBuilder() {
               Open in Notion
             </a>
           </Button>
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <Button variant="outline" onClick={() => navigate('/processes')}>
             Back to process list
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setSubmitSuccess(null)}>
@@ -410,14 +424,19 @@ export default function ProcessBuilder() {
       <div className="border-b px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/">← Back</Link>
+            <Link to="/processes">← Back</Link>
           </Button>
           <span className="text-sm font-medium truncate max-w-[200px]">
             {entry.processName || 'New Process'}
           </span>
           {/* Mode toggle */}
           <div className="flex border rounded-md overflow-hidden">
-            {(['current', 'optimization', 'compare'] as ViewMode[]).map(mode => (
+            {([
+              { mode: 'current', label: 'Current' },
+              { mode: 'interim', label: '⚡ Interim' },
+              { mode: 'ideal', label: '✦ Ideal' },
+              { mode: 'compare', label: '⟺ Compare' },
+            ] as { mode: ViewMode; label: string }[]).map(({ mode, label }) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -428,7 +447,7 @@ export default function ProcessBuilder() {
                     : 'bg-background text-muted-foreground hover:bg-muted/40'
                 )}
               >
-                {mode === 'compare' ? '⟺ Compare' : mode === 'optimization' ? '✦ Ideal' : 'Current'}
+                {label}
               </button>
             ))}
           </div>
@@ -515,7 +534,30 @@ export default function ProcessBuilder() {
           {leftTab === 'details' ? (
             <DetailsTab entry={entry} />
           ) : leftTab === 'ai' ? (
-            <AiChatPanel onApply={handleAiApply} />
+            <AiChatPanel
+              onApply={handleAiApply}
+              viewMode={viewMode}
+              onApplyToCanvas={(fillPatch, target) => {
+                const processMapPatch = fillPatch.processMap
+                if (target === 'current') {
+                  handleAiApply(fillPatch)
+                } else if (target === 'interim') {
+                  if (processMapPatch) patch({ interimMap: processMapPatch })
+                  const { processMap: _pm, ...rest } = fillPatch
+                  if (Object.keys(rest).length) patch(rest as Partial<ProcessEntry>)
+                  setLeftTab('form')
+                  setStep(1)
+                  toast.success('Applied to Interim Fixed flow')
+                } else {
+                  if (processMapPatch) patch({ optimizationMap: processMapPatch })
+                  const { processMap: _pm, ...rest } = fillPatch
+                  if (Object.keys(rest).length) patch(rest as Partial<ProcessEntry>)
+                  setLeftTab('form')
+                  setStep(1)
+                  toast.success('Applied to Long-term Ideal flow')
+                }
+              }}
+            />
           ) : (
             <>
               <WizardShell step={step} onStepClick={setStep}>
@@ -574,7 +616,7 @@ export default function ProcessBuilder() {
         <div className="flex-1 flex flex-col overflow-hidden canvas-fullscreen-target">
           <div className="px-4 py-2 border-b text-xs text-muted-foreground shrink-0">
             {viewMode === 'compare'
-              ? 'Compare view — Current Flow vs. Ideal Flow (read-only)'
+              ? 'Compare view — Current · Interim · Ideal (read-only)'
               : 'Process Map — drag to add · double-click to edit · Shift+drag to multi-select · Delete to remove'}
           </div>
           <div className="flex-1 relative">
@@ -588,6 +630,7 @@ export default function ProcessBuilder() {
                 lineStyle={lineStyle}
                 canvasLabel="Current Flow"
                 domain={entry.domain || undefined}
+                initialHighlight={initialHighlight}
                 onChange={(map) => patch({ processMap: map })}
                 onRelayout={handleRelayout}
                 onLineStyleChange={setLineStyle}
@@ -597,7 +640,7 @@ export default function ProcessBuilder() {
                 onRegisterEditHandler={(handler) => { editHandlerRef.current = handler }}
               />
             )}
-            {viewMode === 'optimization' && (
+            {viewMode === 'ideal' && (
               <>
                 <ProcessCanvas
                   processMap={entry.optimizationMap ?? { nodes: [], edges: [] }}
@@ -628,17 +671,84 @@ export default function ProcessBuilder() {
                 )}
               </>
             )}
+            {viewMode === 'interim' && (
+              <>
+                <ProcessCanvas
+                  processMap={entry.interimMap ?? { nodes: [], edges: [] }}
+                  teamOwner={entry.teamOwner}
+                  workato={entry.workato}
+                  decagonL0={entry.decagonL0}
+                  direction={canvasDirection}
+                  lineStyle={lineStyle}
+                  canvasLabel="Interim Fixed"
+                  onChange={(map) => patch({ interimMap: map })}
+                  onRelayout={(direction) => {
+                    setCanvasDirection(direction)
+                    setEntry(prev => {
+                      if (!prev.interimMap) return prev
+                      const relaid = autoLayout(prev.interimMap.nodes, prev.interimMap.edges, direction)
+                      return { ...prev, interimMap: { nodes: relaid, edges: prev.interimMap.edges } }
+                    })
+                    setLayoutKey(k => k + 1)
+                  }}
+                  onLineStyleChange={setLineStyle}
+                  layoutKey={layoutKey}
+                />
+                {entry.interimMap === undefined && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <div className="bg-background border rounded-lg p-4 text-center shadow-lg pointer-events-auto">
+                      <p className="text-sm text-muted-foreground mb-3">Start with a blank canvas or clone from current</p>
+                      <button
+                        onClick={() => patch({ interimMap: structuredClone(entry.processMap) })}
+                        className="px-4 py-2 bg-foreground text-background rounded text-xs font-medium"
+                      >
+                        Clone Current Flow
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             {viewMode === 'compare' && (
               <CompareView
                 currentMap={entry.processMap}
                 optimizationMap={entry.optimizationMap ?? { nodes: [], edges: [] }}
+                interimMap={entry.interimMap ?? { nodes: [], edges: [] }}
                 direction={canvasDirection}
                 lineStyle={lineStyle}
                 teamOwner={entry.teamOwner}
                 workato={entry.workato}
                 decagonL0={entry.decagonL0}
+                layoutKey={layoutKey}
                 compareSplit={compareSplit}
                 onCompareSplitChange={handleCompareSplitChange}
+                onLineStyleChange={setLineStyle}
+                onDirectionChange={(dir) => {
+                  setCanvasDirection(dir)
+                  setEntry(prev => {
+                    const relaidCurrent = autoLayout(prev.processMap.nodes, prev.processMap.edges, dir)
+                    const relaidInterim = prev.interimMap ? autoLayout(prev.interimMap.nodes, prev.interimMap.edges, dir) : undefined
+                    const relaidIdeal = prev.optimizationMap ? autoLayout(prev.optimizationMap.nodes, prev.optimizationMap.edges, dir) : undefined
+                    return {
+                      ...prev,
+                      processMap: { nodes: relaidCurrent, edges: prev.processMap.edges },
+                      ...(relaidInterim ? { interimMap: { nodes: relaidInterim, edges: prev.interimMap!.edges } } : {}),
+                      ...(relaidIdeal ? { optimizationMap: { nodes: relaidIdeal, edges: prev.optimizationMap!.edges } } : {}),
+                    }
+                  })
+                  setLayoutKey(k => k + 1)
+                }}
+                onCurrentChange={(map) => patch({ processMap: map })}
+                onInterimChange={(map) => patch({ interimMap: map })}
+                onIdealChange={(map) => patch({ optimizationMap: map })}
+                onNodeEdit={(node, panelId) => {
+                  // Swap editHandlerRef to the clicked panel's handlers before opening dialog
+                  editHandlerRef.current = compareEditHandlersRef.current[panelId] ?? null
+                  setExternalEditingNode(node)
+                }}
+                onRegisterPanelEditHandler={(panelId, handler) => {
+                  compareEditHandlersRef.current[panelId] = handler
+                }}
               />
             )}
           </div>

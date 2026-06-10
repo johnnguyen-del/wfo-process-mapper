@@ -54,11 +54,25 @@ export default function NodeEditDialog({ node, inline = false, onSave, onDelete,
   const [lane, setLane] = useState<SwimLane>((node.data as any).lane ?? 'CS')
   const [badgeStatus, setBadgeStatus] = useState<string>((node.data as any).badge?.status ?? '')
   const [badgePriority, setBadgePriority] = useState<string>((node.data as any).badge?.priority ?? '')
-  const [durationMinutes, setDurationMinutes] = useState<string>(
-    (node.data as any).durationMinutes != null
-      ? String((node.data as any).durationMinutes)
-      : ''
-  )
+  // Duration: stored internally as minutes, displayed in best unit
+  const [durationUnit, setDurationUnit] = useState<'min' | 'hrs' | 'days'>(() => {
+    const mins = (node.data as any).durationMinutes as number | undefined
+    if (!mins) return 'min'
+    if (mins >= 480 && mins % 480 === 0) return 'days'
+    if (mins >= 60 && mins % 60 === 0) return 'hrs'
+    return 'min'
+  })
+  const [durationValue, setDurationValue] = useState<string>(() => {
+    const mins = (node.data as any).durationMinutes as number | undefined
+    if (!mins) return ''
+    if (mins >= 480 && mins % 480 === 0) return String(mins / 480)
+    if (mins >= 60 && mins % 60 === 0) return String(mins / 60)
+    return String(mins)
+  })
+  // Compute durationMinutes from value+unit for save
+  const durationMinutes = durationValue !== ''
+    ? String(Number(durationValue) * (durationUnit === 'days' ? 480 : durationUnit === 'hrs' ? 60 : 1))
+    : ''
   const [attachments, setAttachments] = useState<KbLink[]>((node.data as any).attachments ?? [])
   const [nodeColor, setNodeColor] = useState<string>((node.data as any).nodeColor ?? '')
   const [locked, setLocked] = useState<boolean>((node.data as any).locked ?? false)
@@ -148,15 +162,29 @@ export default function NodeEditDialog({ node, inline = false, onSave, onDelete,
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
-              <input
-                type="number"
-                min={0}
-                value={durationMinutes}
-                onChange={e => setDurationMinutes(e.target.value)}
-                placeholder="e.g. 5"
-                className="w-full border rounded px-2 py-1.5 text-sm"
-              />
+              <label className="text-xs font-medium text-muted-foreground">Duration</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={durationValue}
+                  onChange={e => setDurationValue(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="flex-1 border rounded px-2 py-1.5 text-sm min-w-0"
+                />
+                <select
+                  value={durationUnit}
+                  onChange={e => setDurationUnit(e.target.value as 'min' | 'hrs' | 'days')}
+                  className="border rounded px-2 py-1.5 text-xs bg-background w-16 shrink-0"
+                >
+                  <option value="min">min</option>
+                  <option value="hrs">hrs</option>
+                  <option value="days">days</option>
+                </select>
+              </div>
+              {durationUnit === 'days' && durationValue && (
+                <p className="text-[10px] text-muted-foreground">1 day = 8 hrs = 480 min (business day)</p>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-muted-foreground">Lock position</label>

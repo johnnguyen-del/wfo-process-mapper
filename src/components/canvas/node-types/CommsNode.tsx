@@ -19,13 +19,15 @@ export default function CommsNode({ data }: NodeProps) {
   const timeEstimate = (data as any).timeEstimate as string | undefined
   const showTimes = (data as any).showTimes as boolean | undefined
   const badge = (data as any).badge as { status?: string; priority?: string } | undefined
+  const sourcePos = (data as any).sourcePosition ?? Position.Right
+  const targetPos = (data as any).targetPosition ?? Position.Left
 
   return (
     <div className="relative rounded-lg border-2 border-indigo-300 bg-indigo-50 px-3 py-2 text-xs font-medium min-w-[110px] max-w-[160px] shadow-sm">
       {(data as any).locked && (
         <span className="absolute top-0.5 left-1 text-[9px] leading-none opacity-60" title="Locked">🔒</span>
       )}
-      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-indigo-400" />
+      <Handle type="target" position={targetPos} className="!w-2 !h-2 !bg-indigo-400" />
       {badge?.priority && (
         <span className={cn('absolute top-1 right-1 w-2 h-2 rounded-full', PRIORITY_COLORS[badge.priority] ?? '')} />
       )}
@@ -47,7 +49,7 @@ export default function CommsNode({ data }: NodeProps) {
           {timeEstimate ? <span className="font-medium">{timeEstimate}</span> : <span className="opacity-50">add time</span>}
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-indigo-400" />
+      <Handle type="source" position={sourcePos} className="!w-2 !h-2 !bg-indigo-400" />
     </div>
   )
 }
