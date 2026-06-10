@@ -77,6 +77,14 @@ export default function ProcessBuilder() {
   const historyRef = useRef<ProcessMap[]>([])
   const historyIdxRef = useRef<number>(-1)
 
+  // Seed history with the initial empty canvas state so the very first
+  // canvas action is always undoable.
+  useEffect(() => {
+    if (!id && historyRef.current.length === 0) {
+      pushHistory(entry.processMap)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   function pushHistory(map: ProcessMap) {
     historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1)
     historyRef.current.push(structuredClone(map))
@@ -203,11 +211,8 @@ export default function ProcessBuilder() {
   }, [])
 
   function patch(update: Partial<ProcessEntry>) {
-    setEntry((prev) => {
-      const next = { ...prev, ...update }
-      if (update.processMap) pushHistory(update.processMap)
-      return next
-    })
+    if (update.processMap) pushHistory(update.processMap)
+    setEntry((prev) => ({ ...prev, ...update }))
   }
 
   function handleSave() {
