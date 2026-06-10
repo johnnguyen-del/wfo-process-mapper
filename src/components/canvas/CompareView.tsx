@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import ProcessCanvas, { LANE_COLORS, LANE_LABEL_COLORS } from './ProcessCanvas'
 import type { ProcessMap, CanvasDirection, LineStyle, TeamOwner, SwimLane } from '@/lib/types'
 import { computeMetrics } from '@/lib/metrics'
+import { autoLayout } from '@/lib/export'
 import { cn } from '@/lib/utils'
 
 interface CompareViewProps {
@@ -47,6 +48,11 @@ export default function CompareView({
     current: direction,
     interim: direction,
     ideal: direction,
+  })
+
+  // Per-panel layout keys — increment to force canvas remount when direction changes
+  const [panelLayoutKeys, setPanelLayoutKeys] = useState<Record<PanelId, number>>({
+    current: 0, interim: 0, ideal: 0,
   })
 
   // Panel widths as percentages (used when panels are expanded)
@@ -170,10 +176,19 @@ export default function CompareView({
               decagonL0={decagonL0}
               direction={panelDirections[id]}
               lineStyle={lineStyle}
-              layoutKey={layoutKey}
+              layoutKey={panelLayoutKeys[id]}
               hideLegend
               onChange={onChanges[id]}
-              onRelayout={(dir) => setPanelDirections(prev => ({ ...prev, [id]: dir }))}
+              onRelayout={(dir) => {
+                // 1. Relayout nodes for the new direction
+                const map = maps[id]
+                const relaid = autoLayout(map.nodes, map.edges, dir)
+                onChanges[id]({ nodes: relaid, edges: map.edges })
+                // 2. Update this panel's direction
+                setPanelDirections(prev => ({ ...prev, [id]: dir }))
+                // 3. Increment this panel's layoutKey to force canvas remount
+                setPanelLayoutKeys(prev => ({ ...prev, [id]: prev[id] + 1 }))
+              }}
               onLineStyleChange={onLineStyleChange}
             />
           </div>
