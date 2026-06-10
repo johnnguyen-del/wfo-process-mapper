@@ -270,6 +270,8 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
   rfNodesRef.current = rfNodes
   const rfEdgesRef = useRef(rfEdges)
   rfEdgesRef.current = rfEdges
+  const clipboardRef = useRef<{ nodes: ProcessNode[]; edges: ProcessEdge[] } | null>(null)
+  const mousePosRef = useRef<{ x: number; y: number } | null>(null)
 
   // Register a getter so ProcessBuilder can read live canvas state at save time.
   // The getter always reads from rfNodesRef/rfEdgesRef (updated each render),
@@ -297,6 +299,89 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
     document.addEventListener('fullscreenchange', onFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
   }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        (e.target as HTMLElement)?.isContentEditable
+      if (isEditable || readOnly) return
+
+      // Select All
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault()
+        setRfNodes(prev => prev.map(n => ({ ...n, selected: true })))
+        return
+      }
+
+      // Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const selectedNodes = rfNodesRef.current.filter(n => n.selected)
+        if (selectedNodes.length === 0) return
+        const selectedIds = new Set(selectedNodes.map(n => n.id))
+        const connectedEdges = rfEdgesRef.current.filter(
+          e => selectedIds.has(e.source) && selectedIds.has(e.target)
+        )
+        clipboardRef.current = {
+          nodes: fromRfNodes(selectedNodes),
+          edges: fromRfEdges(connectedEdges),
+        }
+        return
+      }
+
+      // Paste
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        const cb = clipboardRef.current
+        if (!cb || cb.nodes.length === 0) return
+
+        const stamp = Date.now()
+        const idMap = new Map<string, string>()
+        cb.nodes.forEach(n => idMap.set(n.id, `copy-${stamp}-${n.id}`))
+
+        // Compute paste position: cursor or +30/+30 offset
+        const firstNode = cb.nodes[0]
+        let originX = firstNode.position.x + 30
+        let originY = firstNode.position.y + 30
+
+        if (mousePosRef.current) {
+          const flowPos = screenToFlowPosition(mousePosRef.current)
+          const minX = Math.min(...cb.nodes.map(n => n.position.x))
+          const minY = Math.min(...cb.nodes.map(n => n.position.y))
+          originX = flowPos.x - (firstNode.position.x - minX)
+          originY = flowPos.y - (firstNode.position.y - minY)
+        }
+
+        const pastedNodes: ProcessNode[] = cb.nodes.map(n => ({
+          ...n,
+          id: idMap.get(n.id)!,
+          locked: undefined, // pasted nodes start unlocked
+          position: {
+            x: originX + (n.position.x - firstNode.position.x),
+            y: originY + (n.position.y - firstNode.position.y),
+          },
+        }))
+
+        const pastedEdges: ProcessEdge[] = cb.edges.map(e => ({
+          id: `copy-${stamp}-${e.id}`,
+          source: idMap.get(e.source) ?? e.source,
+          target: idMap.get(e.target) ?? e.target,
+          label: e.label,
+        }))
+
+        const allNodes = [...fromRfNodes(rfNodesRef.current), ...pastedNodes]
+        const allEdges = [...fromRfEdges(rfEdgesRef.current), ...pastedEdges]
+        const newRfNodes = toRfNodes(allNodes, direction)
+        const newRfEdges = toRfEdges(allEdges, lineStyle)
+        setRfNodes(newRfNodes)
+        setRfEdges(newRfEdges)
+        commit(newRfNodes, newRfEdges)
+        return
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [readOnly, direction, lineStyle])
 
   // Auto-fit when nodes are imported (canvas remounts with pre-loaded nodes)
   useEffect(() => {
@@ -579,6 +664,8 @@ function CanvasInner({ processMap, lanes, direction, lineStyle, canvasLabel, rea
         className="relative flex-1"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
+        onMouseMove={(e) => { mousePosRef.current = { x: e.clientX, y: e.clientY } }}
+        onMouseLeave={() => { mousePosRef.current = null }}
       >
         {showMetrics && (
           <MetricsDashboard processMap={processMap} onClose={() => setShowMetrics(false)} />
