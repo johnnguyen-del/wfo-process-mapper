@@ -36,13 +36,6 @@ const FEATURES = [
   },
 ]
 
-const STEPS = [
-  'Click + New Process Map',
-  'Fill in the 6-step form (or paste YAML from the AI assistant)',
-  'Build the flow map on the canvas',
-  'Submit to Notion ✓',
-]
-
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
@@ -100,46 +93,6 @@ export default function Landing() {
               <div className="text-xs text-muted-foreground leading-relaxed">{f.desc}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Quick start */}
-      <div className="border-t bg-muted/30 px-6 py-10">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-5">
-            Quick start — 4 steps
-          </p>
-          <div className="flex flex-wrap gap-3 items-center">
-            {STEPS.map((step, i) => (
-              <div key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="text-muted-foreground/40 font-bold text-lg hidden sm:block">→</span>}
-                <div className="flex items-center gap-2 bg-background border rounded-lg px-3 py-2">
-                  <span className="w-5 h-5 bg-foreground text-background rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
-                    {i + 1}
-                  </span>
-                  <span className="text-xs font-medium">{step}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 flex gap-3">
-            <Link
-              to="/new"
-              className="flex items-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              Get started →
-            </Link>
-            <a
-              href={NOTION_GUIDE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 border border-border bg-background px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-muted/40 transition-colors"
-            >
-              <BookOpen className="w-4 h-4 text-indigo-500" />
-              Read the full guide
-            </a>
-          </div>
         </div>
       </div>
 
