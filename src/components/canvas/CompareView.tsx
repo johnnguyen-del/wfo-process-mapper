@@ -54,6 +54,13 @@ export default function CompareView({
     ideal: direction,
   })
 
+  // Per-panel line style state (independent Curved / Straight per panel)
+  const [panelLineStyles, setPanelLineStyles] = useState<Record<PanelId, LineStyle>>({
+    current: lineStyle,
+    interim: lineStyle,
+    ideal: lineStyle,
+  })
+
   // Per-panel layout keys — increment to force canvas remount when direction changes
   const [panelLayoutKeys, setPanelLayoutKeys] = useState<Record<PanelId, number>>({
     current: 0, interim: 0, ideal: 0,
@@ -179,7 +186,7 @@ export default function CompareView({
               workato={workato}
               decagonL0={decagonL0}
               direction={panelDirections[id]}
-              lineStyle={lineStyle}
+              lineStyle={panelLineStyles[id]}
               layoutKey={panelLayoutKeys[id]}
               hideLegend
               onChange={onChanges[id]}
@@ -195,7 +202,7 @@ export default function CompareView({
                 // 3. Increment this panel's layoutKey to force canvas remount
                 setPanelLayoutKeys(prev => ({ ...prev, [id]: prev[id] + 1 }))
               }}
-              onLineStyleChange={onLineStyleChange}
+              onLineStyleChange={(style) => setPanelLineStyles(prev => ({ ...prev, [id]: style }))}
             />
           </div>
         )}
