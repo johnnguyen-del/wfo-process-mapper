@@ -1,0 +1,102 @@
+// src/lib/guru.ts
+
+// MagicTools is a browser global injected by the Magic platform (@wealthsimple/magic).
+// It is not available in local dev — guard every call with typeof MagicTools === 'undefined'.
+
+/** Strip HTML tags and decode common entities for plain-text AI processing. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+export interface GuruCard {
+  id: string
+  title: string
+  content: string      // plain text (HTML stripped)
+  lastModified?: string
+}
+
+export interface GuruKnowledgeAgent {
+  id: string
+  name: string
+  description?: string
+}
+
+/**
+ * Extract an 8–16 char Guru card ID from a full URL or a bare ID string.
+ * Handles: https://app.getguru.com/card/{id}/slug and bare IDs like "cxE5E4ai".
+ */
+export function parseGuruCardId(input: string): string | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const urlMatch = trimmed.match(/\/card\/([A-Za-z0-9_-]+)/)
+  if (urlMatch) return urlMatch[1]
+  if (/^[A-Za-z0-9_-]{6,16}$/.test(trimmed)) return trimmed
+  return null
+}
+
+/** Heuristic: does the stripped card content look like an actionable workflow? */
+export function hasWorkflowData(content: string): boolean {
+  const lower = content.toLowerCase()
+  const hasRole = ['cs', 'l1', 'l2', 'ops', 'fraud', 'agent', 'team'].some(k => lower.includes(k))
+  const hasAction = ['verify', 'submit', 'review', 'escalate', 'check', 'step', 'process', 'procedure', 'jira', 'atlas'].some(k => lower.includes(k))
+  // Numbered steps (e.g. "Step 1:") with any action keyword are sufficient structural signal.
+  const hasNumberedSteps = /step\s+\d+/i.test(content)
+  return (hasRole && hasAction) || (hasNumberedSteps && hasAction)
+}
+
+/**
+ * List available Guru knowledge agents.
+ * MUST call before searchGuru() — both search and answer_generation require an agentId.
+ */
+export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
+  if (typeof MagicTools === 'undefined') return []
+  const result = await MagicTools.call('guru__guru_list_knowledge_agents', {})
+  const items: any[] = Array.isArray(result) ? result : ((result as any)?.agents ?? (result as any)?.items ?? [])
+  return items.map((a: any) => ({
+    id: a.id ?? a.agentId ?? '',
+    name: a.name ?? a.title ?? 'Unknown Agent',
+    description: a.description,
+  }))
+}
+
+/**
+ * Search Guru knowledge base for cards matching the query.
+ * Requires an agentId from listKnowledgeAgents(). Returns max 10 results.
+ */
+export async function searchGuru(query: string, agentId: string): Promise<GuruCard[]> {
+  if (typeof MagicTools === 'undefined') {
+    throw new Error('Guru search requires deployment — not available in local dev.')
+  }
+  const result = await MagicTools.call('guru__guru_search_documents', { agentId, query })
+  const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? [])
+  return items.slice(0, 10).map((d: any) => ({
+    id: d.id ?? d.cardId ?? '',
+    title: d.title ?? d.preferredPhrase ?? 'Untitled',
+    content: stripHtml(d.content ?? d.body ?? d.snippet ?? ''),
+    lastModified: d.lastModified ?? d.dateUpdated,
+  }))
+}
+
+/**
+ * Fetch a single Guru card's full content by ID.
+ * Returns HTML stripped to plain text for AI processing.
+ */
+export async function getGuruCardById(cardId: string): Promise<GuruCard> {
+  if (typeof MagicTools === 'undefined') {
+    throw new Error('Guru card fetch requires deployment — not available in local dev.')
+  }
+  const result = await MagicTools.call('guru__guru_get_card_by_id', { cardId }) as any
+  return {
+    id: result?.id ?? cardId,
+    title: result?.preferredPhrase ?? result?.title ?? 'Untitled',
+    content: stripHtml(result?.content ?? result?.html ?? result?.body ?? ''),
+    lastModified: result?.lastModified ?? result?.dateUpdated,
+  }
+}
