@@ -11,6 +11,7 @@ import {
 
 const AGENT_ID_KEY = 'guru_agent_id'
 
+
 interface GuruImportModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -27,28 +28,19 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   const [preview, setPreview] = useState<GuruCard | null>(null)
   // agentId: auto-loaded from listKnowledgeAgents, persisted in localStorage as fallback
   const [agentId, setAgentId] = useState(() => localStorage.getItem(AGENT_ID_KEY) ?? '')
-  const [agentIdInput, setAgentIdInput] = useState('')
-  const [agentIdNeeded, setAgentIdNeeded] = useState(false)
+  const [agentLoading, setAgentLoading] = useState(false)
 
   // On open: auto-fetch the agentId unless we already have one cached
   useEffect(() => {
     if (!open || agentId) return
+    setAgentLoading(true)
     listKnowledgeAgents().then(agents => {
-      if (agents.length === 0) { setAgentIdNeeded(true); return }
+      if (agents.length === 0) return
       const best = agents.find(a => /banking|wfo|cx|operations/i.test(a.name)) ?? agents[0]
       localStorage.setItem(AGENT_ID_KEY, best.id)
       setAgentId(best.id)
-    }).catch(() => setAgentIdNeeded(true))
+    }).catch(() => {}).finally(() => setAgentLoading(false))
   }, [open])
-
-  function saveAgentId() {
-    const id = agentIdInput.trim()
-    if (!id) return
-    localStorage.setItem(AGENT_ID_KEY, id)
-    setAgentId(id)
-    setAgentIdInput('')
-    setAgentIdNeeded(false)
-  }
 
   async function handleFetchByUrl() {
     const cardId = parseGuruCardId(urlInput)
@@ -64,8 +56,7 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   }
 
   async function handleSearch() {
-    if (!searchQuery.trim()) return
-    if (!agentId) { setAgentIdNeeded(true); return }
+    if (!searchQuery.trim() || !agentId) return
     setLoading(true); setError(null); setResults([]); setPreview(null)
     try {
       const cards = await searchGuru(searchQuery.trim(), agentId)
@@ -116,6 +107,7 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                   inputMode === 'search' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
               >
                 <Search className="w-3 h-3" /> Search
+                {agentLoading && <Loader2 className="w-2.5 h-2.5 animate-spin ml-0.5" />}
               </button>
             </div>
 
@@ -134,27 +126,6 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                   </Button>
                 </div>
                 {preview && <CardPreviewRow card={preview} onImport={handleImport} />}
-              </div>
-            ) : agentIdNeeded ? (
-              // Fallback: auto-fetch failed, ask user once
-              <div className="space-y-3">
-                <div className="bg-muted/40 rounded-lg px-4 py-3 space-y-1">
-                  <p className="text-sm font-medium">Guru Knowledge Agent ID needed</p>
-                  <p className="text-xs text-muted-foreground">
-                    Go to <strong>app.getguru.com</strong> → Knowledge Agents → select your agent → copy the ID from the URL. You'll only need to do this once.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Paste agent ID…"
-                    value={agentIdInput}
-                    onChange={(e) => setAgentIdInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && saveAgentId()}
-                    className="text-sm font-mono"
-                    autoFocus
-                  />
-                  <Button onClick={saveAgentId} disabled={!agentIdInput.trim()} size="sm" className="shrink-0">Save</Button>
-                </div>
               </div>
             ) : (
               <div className="space-y-2">
