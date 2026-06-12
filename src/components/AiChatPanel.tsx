@@ -3,6 +3,8 @@ import { Sparkles, Send, Trash2, CheckCircle, AlertCircle, ClipboardPaste } from
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { streamFormFill, type AiMessage, type FormFillPatch } from '@/lib/ai'
 import type { ProcessEntry } from '@/lib/types'
 import { fromYaml } from '@/lib/export'
@@ -297,8 +299,20 @@ Process description:
                         {m.text}
                       </span>
                     ) : (
-                      <div className="bg-muted/40 rounded-2xl rounded-tl-sm px-3 py-2 text-xs font-mono leading-relaxed max-w-full whitespace-pre-wrap break-all">
-                        {m.text || <span className="animate-pulse text-muted-foreground">Thinking…</span>}
+                      <div className="rounded-2xl rounded-tl-sm px-3 py-2 text-xs max-w-full bg-muted/40">
+                        {!m.text
+                          ? <span className="animate-pulse text-muted-foreground">Thinking…</span>
+                          : m.text.trimStart().startsWith('process:')
+                            // YAML output — monospace code block
+                            ? <pre className="font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">{m.text}</pre>
+                            // Conversational — render markdown (bold, lists, etc.)
+                            : <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                className="leading-relaxed space-y-1.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_p]:mb-1 last:[&_p]:mb-0"
+                              >
+                                {m.text}
+                              </ReactMarkdown>
+                        }
                       </div>
                     )}
                   </div>

@@ -102,7 +102,8 @@ PROCESS MAP RULES:
 - STRICT FIDELITY: ONLY create nodes explicitly described by the user. Do NOT infer steps. Do NOT add nodes for things the user didn't mention.
 - DECISION NODES — CRITICAL: ONLY add a decision node if the user EXPLICITLY describes a Yes/No branch, a conditional check, or a fork in the flow. Do NOT infer decision nodes from ambiguous language. If unsure, use a step node and ask the user if they want a decision branch added.
 - DECISION EDGES: every edge from a decision node MUST have a label (e.g. "Yes — passed", "No — failed"). Unlabelled decision edges are unusable.
-- KEEP IT SIMPLE: when in doubt, use step nodes. A clean linear flow with a few steps is far more useful than a complex decision tree the user didn't ask for.`
+- KEEP IT SIMPLE: when in doubt, use step nodes. A clean linear flow with a few steps is far more useful than a complex decision tree the user didn't ask for.
+- PRESERVING EXISTING NODES (CRITICAL): When editing an existing process map, you MUST include ALL existing nodes in your output — not just the new ones. Copy every existing node from the current state exactly (same id, label, lane, type, position, edges) and then append the new nodes. NEVER drop existing nodes when adding new ones. The output process_map.nodes must contain every node that was there before PLUS any additions.`
 
 export interface AiMessage {
   id: string
