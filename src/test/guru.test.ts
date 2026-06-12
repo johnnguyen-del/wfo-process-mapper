@@ -20,6 +20,9 @@ describe('parseGuruCardId', () => {
   it('returns null for empty string', () => {
     expect(parseGuruCardId('')).toBeNull()
   })
+  it('returns null for a 7-char string (too short for a bare id)', () => {
+    expect(parseGuruCardId('abcdefg')).toBeNull()
+  })
 })
 
 describe('hasWorkflowData', () => {
@@ -31,5 +34,11 @@ describe('hasWorkflowData', () => {
   })
   it('returns true for content with step-like structure', () => {
     expect(hasWorkflowData('Step 1: Review account. Step 2: Submit JIRA ticket.')).toBe(true)
+  })
+  it('returns false when role keyword present but no action keyword', () => {
+    expect(hasWorkflowData('The CS team is responsible for client satisfaction.')).toBe(false)
+  })
+  it('returns false for content where cs appears as substring (e.g. "access")', () => {
+    expect(hasWorkflowData('Users can access their account history.')).toBe(false)
   })
 })

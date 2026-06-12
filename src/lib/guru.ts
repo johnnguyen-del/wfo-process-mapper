@@ -11,6 +11,8 @@ function stripHtml(html: string): string {
     .replace(/<[^>]+>/g, '')
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&#x[0-9a-f]+;/gi, ' ')
+    .replace(/&#\d+;/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
@@ -37,18 +39,18 @@ export function parseGuruCardId(input: string): string | null {
   if (!trimmed) return null
   const urlMatch = trimmed.match(/\/card\/([A-Za-z0-9_-]+)/)
   if (urlMatch) return urlMatch[1]
-  if (/^[A-Za-z0-9_-]{6,16}$/.test(trimmed)) return trimmed
+  if (/^[A-Za-z0-9_-]{8,16}$/.test(trimmed)) return trimmed
   return null
 }
 
 /** Heuristic: does the stripped card content look like an actionable workflow? */
 export function hasWorkflowData(content: string): boolean {
   const lower = content.toLowerCase()
-  const hasRole = ['cs', 'l1', 'l2', 'ops', 'fraud', 'agent', 'team'].some(k => lower.includes(k))
+  const hasRole = /\b(cs|l1|l2|ops|fraud|agent|team)\b/.test(lower)
   const hasAction = ['verify', 'submit', 'review', 'escalate', 'check', 'step', 'process', 'procedure', 'jira', 'atlas'].some(k => lower.includes(k))
-  // Numbered steps (e.g. "Step 1:") with any action keyword are sufficient structural signal.
-  const hasNumberedSteps = /step\s+\d+/i.test(content)
-  return (hasRole && hasAction) || (hasNumberedSteps && hasAction)
+  // Also pass if content has numbered step structure with action keywords
+  const hasStepStructure = /step\s+\d+/i.test(content) && hasAction
+  return (hasRole && hasAction) || hasStepStructure
 }
 
 /**
@@ -63,7 +65,7 @@ export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
     id: a.id ?? a.agentId ?? '',
     name: a.name ?? a.title ?? 'Unknown Agent',
     description: a.description,
-  }))
+  })).filter(agent => agent.id !== '')
 }
 
 /**
@@ -81,7 +83,7 @@ export async function searchGuru(query: string, agentId: string): Promise<GuruCa
     title: d.title ?? d.preferredPhrase ?? 'Untitled',
     content: stripHtml(d.content ?? d.body ?? d.snippet ?? ''),
     lastModified: d.lastModified ?? d.dateUpdated,
-  }))
+  })).filter(card => card.id !== '')
 }
 
 /**
