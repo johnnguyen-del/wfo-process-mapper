@@ -28,10 +28,26 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   const [agentId, setAgentId] = useState(() => localStorage.getItem(AGENT_ID_KEY) ?? '')
   const [agentIdInput, setAgentIdInput] = useState('')
   const [configuringAgent, setConfiguringAgent] = useState(false)
+  // Discovered guru tool names from MagicTools.list() — used to verify connection
+  const [discoveredTools, setDiscoveredTools] = useState<string[] | null>(null)
 
-  // When modal opens, reset configure mode if agentId is already set
   useEffect(() => {
-    if (open) setConfiguringAgent(!localStorage.getItem(AGENT_ID_KEY))
+    if (!open) return
+    setConfiguringAgent(!localStorage.getItem(AGENT_ID_KEY))
+    // Discover what Guru tools are actually registered
+    if (typeof MagicTools !== 'undefined') {
+      MagicTools.list().then(({ tools }) => {
+        const guruTools = (tools as { name: string }[])
+          .map(t => t.name)
+          .filter(n => n.toLowerCase().includes('guru'))
+        console.log('[Guru] all registered tools:', (tools as { name: string }[]).map(t => t.name))
+        console.log('[Guru] guru tools found:', guruTools)
+        setDiscoveredTools(guruTools)
+      }).catch(err => {
+        console.error('[Guru] MagicTools.list() failed:', err)
+        setDiscoveredTools([])
+      })
+    }
   }, [open])
 
   function saveAgentId() {
@@ -80,7 +96,7 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
     setUrlInput(''); setSearchQuery(''); setResults([]); setPreview(null); setError(null)
   }
 
-  const isDevMode = typeof (window as any).MagicTools === 'undefined'
+  const isDevMode = typeof MagicTools === 'undefined'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,7 +149,6 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                 {preview && <CardPreviewRow card={preview} onImport={handleImport} />}
               </div>
             ) : configuringAgent ? (
-              // One-time Agent ID setup
               <div className="space-y-3">
                 <div className="bg-muted/40 rounded-lg px-4 py-3 space-y-1">
                   <p className="text-sm font-medium">Guru Knowledge Agent ID required</p>
@@ -156,7 +171,6 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                 </div>
               </div>
             ) : (
-              // Normal search UI
               <div className="space-y-2">
                 <div className="flex gap-2 items-center">
                   <Input
@@ -191,6 +205,21 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
               <p className="text-xs text-destructive flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {error}
               </p>
+            )}
+
+            {/* Connection debug — shows discovered Guru tools */}
+            {discoveredTools !== null && (
+              <div className="border-t pt-2 mt-1">
+                {discoveredTools.length > 0 ? (
+                  <p className="text-[10px] text-green-700 font-mono">
+                    ✓ {discoveredTools.length} Guru tool{discoveredTools.length !== 1 ? 's' : ''} connected: {discoveredTools.join(', ')}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-amber-600">
+                    ⚠ No Guru tools found in MagicTools — check DevTools Console for full tool list
+                  </p>
+                )}
+              </div>
             )}
           </>
         )}
