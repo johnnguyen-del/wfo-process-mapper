@@ -62,11 +62,7 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
 
   async function handleSearch() {
     if (!searchQuery.trim()) return
-    const agentId = getBestAgentId()
-    if (!agentId) {
-      setError('No Guru knowledge agent found. Try the Card URL / ID tab instead.')
-      return
-    }
+    const agentId = getBestAgentId() || undefined
     setLoading(true); setError(null); setResults([]); setPreview(null)
     try {
       const cards = await searchGuru(searchQuery.trim(), agentId)

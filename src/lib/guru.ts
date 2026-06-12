@@ -70,13 +70,16 @@ export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
 
 /**
  * Search Guru knowledge base for cards matching the query.
- * Requires an agentId from listKnowledgeAgents(). Returns max 10 results.
+ * agentId is preferred but optional — if omitted the MCP server uses a default agent.
+ * Returns max 10 results.
  */
-export async function searchGuru(query: string, agentId: string): Promise<GuruCard[]> {
+export async function searchGuru(query: string, agentId?: string): Promise<GuruCard[]> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru search requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru__guru_search_documents', { agentId, query })
+  const payload: Record<string, string> = { query }
+  if (agentId) payload.agentId = agentId
+  const result = await MagicTools.call('guru__guru_search_documents', payload)
   const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? [])
   return items.slice(0, 10).map((d: any) => ({
     id: d.id ?? d.cardId ?? '',
