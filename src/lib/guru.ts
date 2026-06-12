@@ -3,8 +3,22 @@
 // MagicTools is a browser global injected by the Magic platform (@wealthsimple/magic).
 // It is not available in local dev — guard every call with typeof MagicTools === 'undefined'.
 
+/**
+ * MagicTools wraps MCP responses as { content: [{ text: '...json...', type: 'text' }] }.
+ * Unwrap and parse to get the actual tool result object.
+ */
+function unwrapMagicTools(result: unknown): any {
+  const raw = result as any
+  const text = raw?.content?.[0]?.text
+  if (typeof text === 'string') {
+    try { return JSON.parse(text) } catch { return raw }
+  }
+  return raw
+}
+
 /** Strip HTML tags and decode common entities for plain-text AI processing. */
-function stripHtml(html: string): string {
+function stripHtml(html: unknown): string {
+  if (typeof html !== 'string') return ''
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, '\n')
@@ -82,8 +96,9 @@ export async function searchGuru(query: string, agentId: string): Promise<GuruCa
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru search requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru__guru_search_documents', { agentId, query })
-  const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? (result as any)?.cards ?? [])
+  const raw = await MagicTools.call('guru__guru_search_documents', { agentId, query })
+  const result = unwrapMagicTools(raw)
+  const items: any[] = Array.isArray(result) ? result : (result?.results ?? result?.items ?? result?.cards ?? [])
   return items.slice(0, 10).map((d: any) => ({
     id: d.id ?? d.cardId ?? '',
     title: d.preferredPhrase ?? d.title ?? 'Untitled',
@@ -99,12 +114,12 @@ export async function getGuruCardById(cardId: string): Promise<GuruCard> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru card fetch requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru__guru_get_card_by_id', { id: cardId }) as any
-  console.log('[Guru] getGuruCardById raw:', JSON.stringify(result))
+  const raw = await MagicTools.call('guru__guru_get_card_by_id', { id: cardId })
+  const card = unwrapMagicTools(raw)
   return {
-    id: result?.id ?? cardId,
-    title: result?.preferredPhrase ?? result?.title ?? 'Untitled',
-    content: stripHtml(result?.content ?? result?.body ?? ''),
-    lastModified: result?.lastModified ?? result?.dateUpdated,
+    id: card?.id ?? cardId,
+    title: card?.preferredPhrase ?? card?.title ?? 'Untitled',
+    content: stripHtml(card?.content ?? card?.body ?? ''),
+    lastModified: card?.lastModified ?? card?.dateUpdated,
   }
 }
