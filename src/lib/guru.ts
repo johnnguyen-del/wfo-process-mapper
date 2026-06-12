@@ -75,14 +75,14 @@ export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
 }
 
 /**
- * Search Guru knowledge base using guru_search_cards — no agentId required.
+ * Search Guru knowledge base. Requires agentId from guru__guru_list_knowledge_agents.
  * Returns max 10 results.
  */
-export async function searchGuru(query: string): Promise<GuruCard[]> {
+export async function searchGuru(query: string, agentId: string): Promise<GuruCard[]> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru search requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru_search_cards', { query })
+  const result = await MagicTools.call('guru__guru_search_documents', { agentId, query })
   const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? (result as any)?.cards ?? [])
   return items.slice(0, 10).map((d: any) => ({
     id: d.id ?? d.cardId ?? '',
@@ -93,13 +93,13 @@ export async function searchGuru(query: string): Promise<GuruCard[]> {
 }
 
 /**
- * Fetch a single Guru card's full content using guru_get_card — no agentId required.
+ * Fetch a single Guru card's full content by ID. No agentId required.
  */
 export async function getGuruCardById(cardId: string): Promise<GuruCard> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru card fetch requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru_get_card', { cardId }) as any
+  const result = await MagicTools.call('guru__guru_get_card_by_id', { cardId }) as any
   return {
     id: result?.id ?? cardId,
     title: result?.preferredPhrase ?? result?.title ?? 'Untitled',
