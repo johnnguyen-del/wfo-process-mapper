@@ -60,7 +60,9 @@ export function hasWorkflowData(content: string): boolean {
 export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
   if (typeof MagicTools === 'undefined') return []
   const result = await MagicTools.call('guru__guru_list_knowledge_agents', {})
-  const items: any[] = Array.isArray(result) ? result : ((result as any)?.agents ?? (result as any)?.items ?? [])
+  // Log raw response so we can see the actual shape in DevTools → Console
+  console.log('[Guru] listKnowledgeAgents raw:', JSON.stringify(result))
+  const items: any[] = Array.isArray(result) ? result : ((result as any)?.agents ?? (result as any)?.items ?? (result as any)?.data ?? [])
   return items.map((a: any) => ({
     id: a.id ?? a.agentId ?? '',
     name: a.name ?? a.title ?? 'Unknown Agent',

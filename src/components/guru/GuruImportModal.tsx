@@ -25,14 +25,16 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   const [preview, setPreview] = useState<GuruCard | null>(null)
   const [agents, setAgents] = useState<GuruKnowledgeAgent[]>([])
   const [agentsLoading, setAgentsLoading] = useState(false)
+  const [agentsError, setAgentsError] = useState<string | null>(null)
 
   // Fetch knowledge agents once when the modal first opens (needed for search)
   useEffect(() => {
     if (!open || agents.length > 0) return
     setAgentsLoading(true)
+    setAgentsError(null)
     listKnowledgeAgents()
-      .then(setAgents)
-      .catch(() => { /* agents list is best-effort */ })
+      .then(data => { console.log('[Guru] agents loaded:', data); setAgents(data) })
+      .catch(err => { console.error('[Guru] listKnowledgeAgents error:', err); setAgentsError(err?.message ?? 'Failed to load Guru agents') })
       .finally(() => setAgentsLoading(false))
   }, [open])
 
@@ -136,6 +138,11 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
               </div>
             ) : (
               <div className="space-y-2">
+                {agentsError && (
+                  <p className="text-xs text-destructive flex items-center gap-1.5 bg-destructive/5 rounded-lg px-3 py-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Agent load error: {agentsError}
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Input
                     placeholder="e.g. metal card reissuance, NSF fee, wire transfer…"
