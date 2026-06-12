@@ -1,5 +1,5 @@
 import type { ProcessEntry } from './types'
-import { fromYaml } from './export'
+import { fromYaml, toYaml } from './export'
 
 const SYSTEM_PROMPT = `You are a process mapping assistant for Wealthsimple's Workflow Optimization team.
 
@@ -120,7 +120,8 @@ function parseYamlPatch(raw: string): FormFillPatch | null {
 
 export async function streamFormFill(opts: {
   description: string
-  history?: AiMessage[]   // conversation history for multi-turn context
+  history?: AiMessage[]       // conversation history for multi-turn context
+  currentEntry?: ProcessEntry // current form state — AI makes targeted edits, not full rewrites
   onChunk: (raw: string, patch: FormFillPatch | null) => void
   signal?: AbortSignal
 }): Promise<FormFillPatch | null> {
@@ -134,8 +135,13 @@ export async function streamFormFill(opts: {
     content: m.text,
   }))
 
+  // Inject current form state as context so AI makes targeted edits, not full rewrites
+  const currentStateContext = opts.currentEntry
+    ? `\n\nCURRENT FORM STATE (the existing process — edit this, do not replace it wholesale):\n\`\`\`\n${toYaml(opts.currentEntry)}\n\`\`\`\nWhen generating YAML, start from this existing state and apply only the requested changes. Preserve all fields the user did not ask to change.`
+    : ''
+
   const messages = [
-    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'system' as const, content: SYSTEM_PROMPT + currentStateContext },
     ...historyMessages,
     { role: 'user' as const, content: opts.description.trim() },
   ]

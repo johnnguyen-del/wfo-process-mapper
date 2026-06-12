@@ -537,6 +537,7 @@ export default function ProcessBuilder() {
             <AiChatPanel
               onApply={handleAiApply}
               viewMode={viewMode}
+              currentEntry={entry}
               onApplyToCanvas={(fillPatch, target) => {
                 const processMapPatch = fillPatch.processMap
                 if (target === 'current') {

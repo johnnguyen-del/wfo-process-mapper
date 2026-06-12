@@ -4,16 +4,18 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { streamFormFill, type AiMessage, type FormFillPatch } from '@/lib/ai'
+import type { ProcessEntry } from '@/lib/types'
 import { fromYaml } from '@/lib/export'
 import { cn } from '@/lib/utils'
 
 interface AiChatPanelProps {
   onApply: (patch: FormFillPatch) => void
   viewMode?: string
+  currentEntry?: ProcessEntry  // current form state so AI makes targeted edits
   onApplyToCanvas?: (patch: FormFillPatch, target: 'current' | 'interim' | 'ideal') => void
 }
 
-export default function AiChatPanel({ onApply, viewMode, onApplyToCanvas }: AiChatPanelProps) {
+export default function AiChatPanel({ onApply, viewMode, currentEntry, onApplyToCanvas }: AiChatPanelProps) {
   const [mode, setMode] = useState<'stream' | 'paste'>('stream')
   const [messages, setMessages] = useState<AiMessage[]>([])
   const [input, setInput] = useState('')
@@ -47,6 +49,7 @@ export default function AiChatPanel({ onApply, viewMode, onApplyToCanvas }: AiCh
       const patch = await streamFormFill({
         description: text,
         history,
+        currentEntry,
         signal: abortRef.current.signal,
         onChunk: (raw, parsed) => {
           setMessages((prev) =>
