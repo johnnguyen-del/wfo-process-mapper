@@ -123,6 +123,7 @@ export default function MapQualityChecklist({ processMap, activeLanes, domain }:
     'Client comms': 'Comms',
   }
 
+
   return (
     <div className="border-t shrink-0">
       {/* Existing checklist bar */}
