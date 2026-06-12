@@ -76,7 +76,7 @@ export default function CoreIdentityStep({ entry, onChange }: CoreIdentityStepPr
 
       <FieldGroup
         label="Team Owner"
-        hint="All teams that actively handle this workflow — select all that apply"
+        hint="The team that owns and executes this workflow. L1 triages to L2? Select L2 only."
         required
       >
         <MultiToggle<TeamOwner>

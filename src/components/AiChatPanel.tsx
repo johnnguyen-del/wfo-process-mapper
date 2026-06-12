@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
-import { Sparkles, Send, Trash2, CheckCircle, AlertCircle, ClipboardPaste } from 'lucide-react'
+import { Sparkles, Send, Trash2, CheckCircle, AlertCircle, ClipboardPaste, BookOpen } from 'lucide-react'
+import GuruImportModal from '@/components/guru/GuruImportModal'
+import type { GuruCard } from '@/lib/guru'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -100,6 +102,7 @@ export default function AiChatPanel({ onApply, viewMode, currentEntry, onApplyTo
   const [applied, setApplied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingPatch, setPendingPatch] = useState<FormFillPatch | null>(null)
+  const [guruModalOpen, setGuruModalOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const hasMessages = messages.length > 0
@@ -212,6 +215,36 @@ export default function AiChatPanel({ onApply, viewMode, currentEntry, onApplyTo
     setInput('')
   }
 
+  function handleGuruImport(card: GuruCard) {
+    setMode('stream')
+    setMessages([])
+    setLastPatch(null)
+    setApplied(false)
+    setError(null)
+    // Feed card as opening context — AI will ask clarifying questions before generating YAML
+    const description = `I want to map this process from a Guru knowledge base card.\n\nTitle: "${card.title}"\n\nContent:\n${card.content}`
+    const userMsg: AiMessage = { id: `u${Date.now()}`, role: 'user', text: `Importing Guru card: "${card.title}"` }
+    const assistantMsg: AiMessage = { id: `a${Date.now()}`, role: 'assistant', text: '' }
+    setMessages([userMsg, assistantMsg])
+    setStreaming(true)
+    abortRef.current = new AbortController()
+    streamFormFill({
+      description,
+      currentEntry,
+      signal: abortRef.current.signal,
+      onChunk: (raw, parsed) => {
+        setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, text: raw } : m))
+        if (parsed) setLastPatch(parsed)
+      },
+    }).then(patch => {
+      if (patch) setLastPatch(patch)
+    }).catch(err => {
+      if (err?.name !== 'AbortError') setError(err?.message ?? 'Guru import failed.')
+    }).finally(() => {
+      setStreaming(false)
+    })
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Canvas selector — shown in compare mode after applying */}
@@ -251,6 +284,14 @@ export default function AiChatPanel({ onApply, viewMode, currentEntry, onApplyTo
           <Sparkles className="w-4 h-4 text-violet-500" />
           AI Form Fill
         </div>
+        <button
+          onClick={() => setGuruModalOpen(true)}
+          title="Import from Guru knowledge base"
+          className="flex items-center gap-1 text-xs text-green-700 border border-green-200 bg-green-50 hover:bg-green-100 rounded-full px-2 py-0.5 transition-colors font-medium"
+        >
+          <BookOpen className="w-3 h-3" />
+          Guru
+        </button>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setMode('stream')}
@@ -283,7 +324,7 @@ process:
   name: string                          # e.g. "Metal Card Reissuance — Client Request"
   domain: Banking|Transfers|Invest|Security & Risk
   description: string                   # 1-3 sentences: trigger, action, resolution
-  team_owner: [CS, Ops, Fraud Ops, L2 - Risk]
+  team_owner: [CS, Ops, Fraud Ops, L2 - Risk]  # Team that EXECUTES the workflow. L1 triages to L2 → Ops only
   volume_tier: High|Medium|Low
   user_tools: [Atlas, Persona, OAS, JIRA, Google Sheets, DOCX]
   jira_boards: [BOPSIT, BOPSFUND, EOC, BOSM, BOTAX, WORP, BOAO, LEDGE, DAM, FRAUD, DOCX]
@@ -319,6 +360,9 @@ process:
         label: string                   # optional
 
 Rules:
+- Support tiers: L1=CS (offshore, initial contact, triages), L2=Ops/Fraud Ops/L2-Risk (in-house, owns resolution)
+- team_owner = team that EXECUTES the workflow. L1 immediately triages to L2 → [Ops], not [CS, Ops]
+- Node lane = tier performing THAT step. Prefix labels: "L1: ...", "L2 Ops: ...", "L3: ..."
 - Always include a start node (lane: CS) and an end node
 - step/decision → acting team lane; automation → Automation; comms → Client
 - containment_blocker must be specific, not "not ready yet"
@@ -430,6 +474,11 @@ Process description:
           </div>
         </>
       )}
+      <GuruImportModal
+        open={guruModalOpen}
+        onOpenChange={setGuruModalOpen}
+        onImport={handleGuruImport}
+      />
     </div>
   )
 }
