@@ -5,10 +5,81 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { streamFormFill, type AiMessage, type FormFillPatch } from '@/lib/ai'
-import type { ProcessEntry } from '@/lib/types'
-import { fromYaml } from '@/lib/export'
+import { streamFormFill, parsePatch, type AiMessage, type FormFillPatch, type MapPatch } from '@/lib/ai'
+import type { ProcessEntry, ProcessNode, ProcessEdge } from '@/lib/types'
+import { fromYaml, autoLayout } from '@/lib/export'
 import { cn } from '@/lib/utils'
+
+/** Merges a targeted MapPatch against the current entry's processMap. Returns a full FormFillPatch. */
+function applyMapPatch(mapPatch: MapPatch, entry?: ProcessEntry): FormFillPatch {
+  // Field-only patch — no structural changes needed
+  const hasStructural = (mapPatch.addNodes?.length ?? 0) > 0
+    || (mapPatch.removeNodeIds?.length ?? 0) > 0
+    || (mapPatch.addEdges?.length ?? 0) > 0
+    || (mapPatch.removeEdgeIds?.length ?? 0) > 0
+
+  if (!hasStructural) {
+    return { ...(mapPatch.updateFields ?? {}) }
+  }
+
+  const existing = entry?.processMap ?? { nodes: [], edges: [] }
+  let nodes: ProcessNode[] = [...existing.nodes]
+  let edges: ProcessEdge[] = [...existing.edges]
+
+  const maxNodeNum = nodes.reduce((max, n) => {
+    const num = parseInt(n.id.replace(/\D/g, ''), 10)
+    return isNaN(num) ? max : Math.max(max, num)
+  }, 0)
+
+  const newNodeIds: string[] = []
+
+  if (mapPatch.addNodes) {
+    mapPatch.addNodes.forEach((n: any, i: number) => {
+      const id = `n${maxNodeNum + i + 1}`
+      newNodeIds.push(id)
+      nodes.push({
+        id,
+        type: n.type ?? 'step',
+        label: n.label ?? '',
+        lane: n.lane ?? 'CS',
+        timeEstimate: n.time_estimate ?? n.timeEstimate,
+        position: { x: 0, y: 0 },
+      } as ProcessNode)
+    })
+  }
+
+  if (mapPatch.removeNodeIds?.length) {
+    const rm = new Set(mapPatch.removeNodeIds)
+    nodes = nodes.filter(n => !rm.has(n.id))
+    edges = edges.filter(e => !rm.has(e.source) && !rm.has(e.target))
+  }
+
+  if (mapPatch.addEdges?.length) {
+    const maxEdgeNum = edges.reduce((max, e) => {
+      const num = parseInt(e.id.replace(/\D/g, ''), 10)
+      return isNaN(num) ? max : Math.max(max, num)
+    }, 0)
+    const resolve = (ref?: string) =>
+      ref?.startsWith('new_')
+        ? newNodeIds[parseInt(ref.replace('new_', ''), 10) - 1] ?? ref
+        : ref ?? ''
+    mapPatch.addEdges.forEach((e: any, i: number) => {
+      edges.push({ id: `e${maxEdgeNum + i + 1}`, source: resolve(e.source), target: resolve(e.target), label: e.label })
+    })
+  }
+
+  if (mapPatch.removeEdgeIds?.length) {
+    const rm = new Set(mapPatch.removeEdgeIds)
+    edges = edges.filter(e => !rm.has(e.id))
+  }
+
+  const laidOutNodes = autoLayout(nodes, edges, 'LR')
+
+  return {
+    ...(mapPatch.updateFields ?? {}),
+    processMap: { nodes: laidOutNodes, edges },
+  }
+}
 
 interface AiChatPanelProps {
   onApply: (patch: FormFillPatch) => void
@@ -46,21 +117,28 @@ export default function AiChatPanel({ onApply, viewMode, currentEntry, onApplyTo
     setError(null)
     abortRef.current = new AbortController()
     try {
-      // Pass full conversation history (excluding the new user+assistant pair we just added)
-      const history = messages  // messages before we added the new pair — captured in closure
+      const history = messages
+      let fullText = ''
       const patch = await streamFormFill({
         description: text,
         history,
         currentEntry,
         signal: abortRef.current.signal,
         onChunk: (raw, parsed) => {
+          fullText = raw
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantMsg.id ? { ...m, text: raw } : m))
           )
           if (parsed) setLastPatch(parsed)
         },
       })
-      if (patch) setLastPatch(patch)
+      if (patch) {
+        setLastPatch(patch)
+      } else {
+        // Try patch: format (targeted edit — much smaller than full YAML)
+        const mapPatch = parsePatch(fullText)
+        if (mapPatch) setLastPatch(applyMapPatch(mapPatch, currentEntry))
+      }
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
         setError(err?.message ?? 'Something went wrong.')
@@ -302,8 +380,8 @@ Process description:
                       <div className="rounded-2xl rounded-tl-sm px-3 py-2 text-xs max-w-full bg-muted/40">
                         {!m.text
                           ? <span className="animate-pulse text-muted-foreground">Thinking…</span>
-                          : m.text.trimStart().startsWith('process:')
-                            // YAML output — monospace code block
+                          : (m.text.trimStart().startsWith('process:') || m.text.trimStart().startsWith('patch:'))
+                            // YAML / patch output — monospace code block
                             ? <pre className="font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">{m.text}</pre>
                             // Conversational — render markdown (bold, lists, etc.)
                             : <ReactMarkdown

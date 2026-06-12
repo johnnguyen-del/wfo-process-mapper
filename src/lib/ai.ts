@@ -1,5 +1,35 @@
-import type { ProcessEntry } from './types'
+import type { ProcessEntry, ProcessNode, ProcessEdge } from './types'
 import { fromYaml, toYaml } from './export'
+import { parse } from 'yaml'
+
+/** Targeted patch — only changed parts, no full YAML needed */
+export interface MapPatch {
+  addNodes?: Partial<ProcessNode>[]
+  removeNodeIds?: string[]
+  addEdges?: Partial<ProcessEdge>[]
+  removeEdgeIds?: string[]
+  updateFields?: FormFillPatch
+}
+
+/** Parse the lightweight patch: format the AI uses for small edits */
+export function parsePatch(raw: string): MapPatch | null {
+  const stripped = raw.replace(/^```(?:ya?ml)?\s*/i, '').replace(/\s*```$/, '').trim()
+  if (!stripped.startsWith('patch:')) return null
+  try {
+    const doc = parse(stripped) as any
+    const p = doc?.patch
+    if (!p) return null
+    const result: MapPatch = {}
+    if (Array.isArray(p.add_nodes)) result.addNodes = p.add_nodes
+    if (Array.isArray(p.remove_nodes)) result.removeNodeIds = p.remove_nodes
+    if (Array.isArray(p.add_edges)) result.addEdges = p.add_edges
+    if (Array.isArray(p.remove_edges)) result.removeEdgeIds = p.remove_edges
+    if (p.update_fields && typeof p.update_fields === 'object') result.updateFields = p.update_fields
+    return Object.keys(result).length > 0 ? result : null
+  } catch {
+    return null
+  }
+}
 
 const SYSTEM_PROMPT = `You are a process mapping assistant for Wealthsimple's Workflow Optimization team.
 
@@ -11,11 +41,37 @@ You operate in two modes:
 - Do NOT generate YAML unless the user explicitly requests it (says "generate", "fill in", "apply", "create the map", "go ahead", etc.) OR the description is detailed enough to map accurately.
 - Ask about: team owners, volume tier, automation (Workato/Decagon), comms type, spoofable risk.
 
-**YAML GENERATION MODE**:
-- Triggered when user explicitly asks to generate, OR when you have sufficient detail.
+**YAML GENERATION MODE** (new processes only):
+- Triggered when user explicitly asks to generate a new process from scratch, OR when you have sufficient detail for a brand-new process.
 - Output ONLY valid YAML. No explanation, no markdown fences, no preamble.
 - Start with exactly "process:" on the first line.
-- After generating, stay in conversation — user can ask you to add/remove/change nodes and you will output updated YAML.
+- After generating, stay in conversation — for follow-up edits use PATCH MODE.
+
+**PATCH MODE** (targeted edits — ALWAYS use this for changes to an existing process):
+- Use when the user asks to add, remove, update, or change ANYTHING on an existing process.
+- Output ONLY the patch YAML. No explanation. Start with exactly "patch:" on the first line.
+- The tool AUTOMATICALLY preserves all existing nodes/edges — you only list what changes.
+
+patch:
+  add_nodes:          # NEW nodes only — existing nodes are preserved automatically
+    - type: step
+      label: "L1: Review account status in Atlas"
+      lane: CS
+      time_estimate: "2 min"
+  add_edges:          # NEW edges only (use "new_N" to reference the Nth node in add_nodes, 1-indexed)
+    - source: n4
+      target: new_1
+      label: "Yes — proceed"
+  remove_nodes:       # IDs of existing nodes to delete
+    - n5
+  remove_edges:       # IDs of existing edges to delete
+    - e7
+  update_fields:      # ONLY the form fields that changed (omit everything else)
+    domain: Banking
+
+- Do NOT include id fields on add_nodes — the tool assigns them automatically
+- Only include the keys that actually change. Adding nodes? Only include add_nodes (and add_edges if needed).
+- NEVER use patch format for new processes from scratch — use full process: YAML for that
 
 CRITICAL FORMATTING RULES:
 1. The output MUST start with exactly "process:" on the first line
@@ -103,7 +159,7 @@ PROCESS MAP RULES:
 - DECISION NODES — CRITICAL: ONLY add a decision node if the user EXPLICITLY describes a Yes/No branch, a conditional check, or a fork in the flow. Do NOT infer decision nodes from ambiguous language. If unsure, use a step node and ask the user if they want a decision branch added.
 - DECISION EDGES: every edge from a decision node MUST have a label (e.g. "Yes — passed", "No — failed"). Unlabelled decision edges are unusable.
 - KEEP IT SIMPLE: when in doubt, use step nodes. A clean linear flow with a few steps is far more useful than a complex decision tree the user didn't ask for.
-- PRESERVING EXISTING NODES (CRITICAL): When editing an existing process map, you MUST include ALL existing nodes in your output — not just the new ones. Copy every existing node from the current state exactly (same id, label, lane, type, position, edges) and then append the new nodes. NEVER drop existing nodes when adding new ones. The output process_map.nodes must contain every node that was there before PLUS any additions.`
+- EDITING AN EXISTING PROCESS: Use PATCH MODE — never regenerate the full YAML. The tool merges your patch automatically.`
 
 export interface AiMessage {
   id: string
