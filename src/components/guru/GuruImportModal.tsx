@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import {
-  searchGuru, getGuruCardById, parseGuruCardId, hasWorkflowData,
+  listKnowledgeAgents, searchGuru, getGuruCardById, parseGuruCardId, hasWorkflowData,
   type GuruCard,
 } from '@/lib/guru'
+
+const AGENT_ID_KEY = 'guru_agent_id'
 
 interface GuruImportModalProps {
   open: boolean
@@ -23,24 +25,37 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<GuruCard[]>([])
   const [preview, setPreview] = useState<GuruCard | null>(null)
+  // agentId: auto-loaded from listKnowledgeAgents, persisted in localStorage as fallback
+  const [agentId, setAgentId] = useState(() => localStorage.getItem(AGENT_ID_KEY) ?? '')
+  const [agentIdInput, setAgentIdInput] = useState('')
+  const [agentIdNeeded, setAgentIdNeeded] = useState(false)
 
-  // Reset state when modal closes
+  // On open: auto-fetch the agentId unless we already have one cached
   useEffect(() => {
-    if (!open) {
-      setUrlInput(''); setSearchQuery(''); setResults([]); setPreview(null); setError(null)
-    }
+    if (!open || agentId) return
+    listKnowledgeAgents().then(agents => {
+      if (agents.length === 0) { setAgentIdNeeded(true); return }
+      const best = agents.find(a => /banking|wfo|cx|operations/i.test(a.name)) ?? agents[0]
+      localStorage.setItem(AGENT_ID_KEY, best.id)
+      setAgentId(best.id)
+    }).catch(() => setAgentIdNeeded(true))
   }, [open])
+
+  function saveAgentId() {
+    const id = agentIdInput.trim()
+    if (!id) return
+    localStorage.setItem(AGENT_ID_KEY, id)
+    setAgentId(id)
+    setAgentIdInput('')
+    setAgentIdNeeded(false)
+  }
 
   async function handleFetchByUrl() {
     const cardId = parseGuruCardId(urlInput)
-    if (!cardId) {
-      setError('Paste a Guru card URL (app.getguru.com/card/…) or an 8-char card ID.')
-      return
-    }
+    if (!cardId) { setError('Paste a Guru card URL (app.getguru.com/card/…) or an 8-char card ID.'); return }
     setLoading(true); setError(null); setPreview(null)
     try {
-      const card = await getGuruCardById(cardId)
-      setPreview(card)
+      setPreview(await getGuruCardById(cardId))
     } catch (err: any) {
       setError(err?.message ?? 'Failed to fetch card.')
     } finally {
@@ -50,9 +65,10 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
 
   async function handleSearch() {
     if (!searchQuery.trim()) return
+    if (!agentId) { setAgentIdNeeded(true); return }
     setLoading(true); setError(null); setResults([]); setPreview(null)
     try {
-      const cards = await searchGuru(searchQuery.trim())
+      const cards = await searchGuru(searchQuery.trim(), agentId)
       if (cards.length === 0) setError('No cards found. Try different keywords.')
       else setResults(cards)
     } catch (err: any) {
@@ -65,6 +81,7 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   function handleImport(card: GuruCard) {
     onImport(card)
     onOpenChange(false)
+    setUrlInput(''); setSearchQuery(''); setResults([]); setPreview(null); setError(null)
   }
 
   const isDevMode = typeof MagicTools === 'undefined'
@@ -85,7 +102,6 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
           </p>
         ) : (
           <>
-            {/* Mode toggle */}
             <div className="flex gap-1 border rounded-lg p-0.5 bg-muted/30">
               <button
                 onClick={() => { setInputMode('url'); setError(null); setResults([]) }}
@@ -118,6 +134,27 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                   </Button>
                 </div>
                 {preview && <CardPreviewRow card={preview} onImport={handleImport} />}
+              </div>
+            ) : agentIdNeeded ? (
+              // Fallback: auto-fetch failed, ask user once
+              <div className="space-y-3">
+                <div className="bg-muted/40 rounded-lg px-4 py-3 space-y-1">
+                  <p className="text-sm font-medium">Guru Knowledge Agent ID needed</p>
+                  <p className="text-xs text-muted-foreground">
+                    Go to <strong>app.getguru.com</strong> → Knowledge Agents → select your agent → copy the ID from the URL. You'll only need to do this once.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Paste agent ID…"
+                    value={agentIdInput}
+                    onChange={(e) => setAgentIdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && saveAgentId()}
+                    className="text-sm font-mono"
+                    autoFocus
+                  />
+                  <Button onClick={saveAgentId} disabled={!agentIdInput.trim()} size="sm" className="shrink-0">Save</Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">

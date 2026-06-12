@@ -67,20 +67,12 @@ export function hasWorkflowData(content: string): boolean {
   return (hasRole && hasAction) || hasStepStructure
 }
 
-/**
- * List available Guru knowledge agents.
- * MUST call before searchGuru() — both search and answer_generation require an agentId.
- */
-/**
- * List available Guru knowledge agents.
- * Note: guru__guru_list_knowledge_agents itself requires an agentId in the current
- * Guru MCP implementation — so this function is not useful for bootstrapping.
- * The modal instead persists agentId in localStorage via a one-time setup prompt.
- */
+/** List available Guru knowledge agents to auto-resolve agentId for search. */
 export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
   if (typeof MagicTools === 'undefined') return []
-  const result = await MagicTools.call('guru__guru_list_knowledge_agents', {})
-  const items: any[] = Array.isArray(result) ? result : ((result as any)?.agents ?? (result as any)?.items ?? (result as any)?.data ?? [])
+  const raw = await MagicTools.call('guru__guru_list_knowledge_agents', {})
+  const result = unwrapMagicTools(raw)
+  const items: any[] = Array.isArray(result) ? result : (result?.agents ?? result?.items ?? result?.data ?? [])
   return items.map((a: any) => ({
     id: a.id ?? a.agentId ?? '',
     name: a.name ?? a.title ?? 'Unknown Agent',
