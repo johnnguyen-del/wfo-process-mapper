@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Search, Link, Loader2, CheckCircle, AlertTriangle, BookOpen } from 'lucide-react'
+import { Search, Link, Loader2, CheckCircle, AlertTriangle, BookOpen, Settings } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import {
-  listKnowledgeAgents, searchGuru, getGuruCardById, parseGuruCardId, hasWorkflowData,
-  type GuruCard, type GuruKnowledgeAgent,
+  searchGuru, getGuruCardById, parseGuruCardId, hasWorkflowData,
+  type GuruCard,
 } from '@/lib/guru'
+
+const AGENT_ID_KEY = 'guru_agent_id'
 
 interface GuruImportModalProps {
   open: boolean
@@ -23,26 +25,22 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<GuruCard[]>([])
   const [preview, setPreview] = useState<GuruCard | null>(null)
-  const [agents, setAgents] = useState<GuruKnowledgeAgent[]>([])
-  const [agentsLoading, setAgentsLoading] = useState(false)
-  const [agentsError, setAgentsError] = useState<string | null>(null)
+  const [agentId, setAgentId] = useState(() => localStorage.getItem(AGENT_ID_KEY) ?? '')
+  const [agentIdInput, setAgentIdInput] = useState('')
+  const [configuringAgent, setConfiguringAgent] = useState(false)
 
-  // Fetch knowledge agents once when the modal first opens (needed for search)
+  // When modal opens, reset configure mode if agentId is already set
   useEffect(() => {
-    if (!open || agents.length > 0) return
-    setAgentsLoading(true)
-    setAgentsError(null)
-    listKnowledgeAgents()
-      .then(data => { console.log('[Guru] agents loaded:', data); setAgents(data) })
-      .catch(err => { console.error('[Guru] listKnowledgeAgents error:', err); setAgentsError(err?.message ?? 'Failed to load Guru agents') })
-      .finally(() => setAgentsLoading(false))
+    if (open) setConfiguringAgent(!localStorage.getItem(AGENT_ID_KEY))
   }, [open])
 
-  // Pick the best agent: prefer one named something like "Banking" or "WFO"; fall back to first
-  function getBestAgentId(): string {
-    if (agents.length === 0) return ''
-    const banking = agents.find(a => /banking|wfo|cx|operations/i.test(a.name))
-    return (banking ?? agents[0]).id
+  function saveAgentId() {
+    const id = agentIdInput.trim()
+    if (!id) return
+    localStorage.setItem(AGENT_ID_KEY, id)
+    setAgentId(id)
+    setAgentIdInput('')
+    setConfiguringAgent(false)
   }
 
   async function handleFetchByUrl() {
@@ -63,8 +61,7 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
   }
 
   async function handleSearch() {
-    if (!searchQuery.trim()) return
-    const agentId = getBestAgentId() || undefined
+    if (!searchQuery.trim() || !agentId) return
     setLoading(true); setError(null); setResults([]); setPreview(null)
     try {
       const cards = await searchGuru(searchQuery.trim(), agentId)
@@ -116,7 +113,6 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                   inputMode === 'search' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
               >
                 <Search className="w-3 h-3" /> Search
-                {agentsLoading && <Loader2 className="w-2.5 h-2.5 animate-spin ml-1" />}
               </button>
             </div>
 
@@ -136,14 +132,33 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                 </div>
                 {preview && <CardPreviewRow card={preview} onImport={handleImport} />}
               </div>
-            ) : (
-              <div className="space-y-2">
-                {agentsError && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5 bg-destructive/5 rounded-lg px-3 py-2">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Agent load error: {agentsError}
+            ) : configuringAgent ? (
+              // One-time Agent ID setup
+              <div className="space-y-3">
+                <div className="bg-muted/40 rounded-lg px-4 py-3 space-y-1">
+                  <p className="text-sm font-medium">Guru Knowledge Agent ID required</p>
+                  <p className="text-xs text-muted-foreground">
+                    Find yours in Guru: <strong>Knowledge Agents</strong> → select your agent → copy the ID from the URL or settings.
                   </p>
-                )}
+                </div>
                 <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. a1b2c3d4-e5f6-..."
+                    value={agentIdInput}
+                    onChange={(e) => setAgentIdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && saveAgentId()}
+                    className="text-sm font-mono"
+                    autoFocus
+                  />
+                  <Button onClick={saveAgentId} disabled={!agentIdInput.trim()} size="sm" className="shrink-0">
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // Normal search UI
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
                   <Input
                     placeholder="e.g. metal card reissuance, NSF fee, wire transfer…"
                     value={searchQuery}
@@ -151,9 +166,16 @@ export default function GuruImportModal({ open, onOpenChange, onImport }: GuruIm
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     className="text-sm"
                   />
-                  <Button onClick={handleSearch} disabled={!searchQuery.trim() || loading || agentsLoading} size="sm" className="shrink-0">
+                  <Button onClick={handleSearch} disabled={!searchQuery.trim() || loading} size="sm" className="shrink-0">
                     {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                   </Button>
+                  <button
+                    onClick={() => { setConfiguringAgent(true); setAgentIdInput(agentId); setError(null) }}
+                    title="Change Guru Agent ID"
+                    className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 {results.length > 0 && (
                   <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">

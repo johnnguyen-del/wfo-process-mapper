@@ -57,11 +57,15 @@ export function hasWorkflowData(content: string): boolean {
  * List available Guru knowledge agents.
  * MUST call before searchGuru() — both search and answer_generation require an agentId.
  */
+/**
+ * List available Guru knowledge agents.
+ * Note: guru__guru_list_knowledge_agents itself requires an agentId in the current
+ * Guru MCP implementation — so this function is not useful for bootstrapping.
+ * The modal instead persists agentId in localStorage via a one-time setup prompt.
+ */
 export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
   if (typeof MagicTools === 'undefined') return []
   const result = await MagicTools.call('guru__guru_list_knowledge_agents', {})
-  // Log raw response so we can see the actual shape in DevTools → Console
-  console.log('[Guru] listKnowledgeAgents raw:', JSON.stringify(result))
   const items: any[] = Array.isArray(result) ? result : ((result as any)?.agents ?? (result as any)?.items ?? (result as any)?.data ?? [])
   return items.map((a: any) => ({
     id: a.id ?? a.agentId ?? '',
@@ -72,16 +76,14 @@ export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
 
 /**
  * Search Guru knowledge base for cards matching the query.
- * agentId is preferred but optional — if omitted the MCP server uses a default agent.
+ * agentId is required — obtain it from the user's Guru Knowledge Agent settings.
  * Returns max 10 results.
  */
-export async function searchGuru(query: string, agentId?: string): Promise<GuruCard[]> {
+export async function searchGuru(query: string, agentId: string): Promise<GuruCard[]> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru search requires deployment — not available in local dev.')
   }
-  const payload: Record<string, string> = { query }
-  if (agentId) payload.agentId = agentId
-  const result = await MagicTools.call('guru__guru_search_documents', payload)
+  const result = await MagicTools.call('guru__guru_search_documents', { agentId, query })
   const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? [])
   return items.slice(0, 10).map((d: any) => ({
     id: d.id ?? d.cardId ?? '',
