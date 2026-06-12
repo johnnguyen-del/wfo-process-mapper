@@ -90,9 +90,7 @@ export async function searchGuru(query: string, agentId: string): Promise<GuruCa
   }
   const raw = await MagicTools.call('guru__guru_search_documents', { agentId, query })
   const result = unwrapMagicTools(raw)
-  console.log('[Guru] searchGuru raw:', JSON.stringify(raw).slice(0, 500))
-  console.log('[Guru] searchGuru unwrapped:', JSON.stringify(result).slice(0, 500))
-  const items: any[] = Array.isArray(result) ? result : (result?.results ?? result?.items ?? result?.cards ?? result?.documents ?? result?.data ?? [])
+  const items: any[] = Array.isArray(result) ? result : (result?.documents ?? result?.results ?? result?.items ?? [])
   return items.slice(0, 10).map((d: any) => ({
     id: d.id ?? d.cardId ?? '',
     title: d.preferredPhrase ?? d.title ?? 'Untitled',
