@@ -125,9 +125,20 @@ process:
         target: n2
         label: "Yes — condition"
 
+SUPPORT TIER STRUCTURE — critical context for node lanes and team_owner:
+- L1 (CS): Offshore agents. Take the initial client contact. Always try to contain. If they can't, triage to L2.
+- L2 (Ops / Fraud Ops / L2 - Risk): In-house front-line. Handle what L1 sends. Own the client interaction throughout — even when opening a JIRA ticket to a back-office team, L2 still owns and contains the resolution.
+- L3: Highly trained agents for complex or escalated situations. Only assign if the source explicitly says to escalate to L3. May involve a Team Support Agent (TSA) or Team Lead (TL).
+
 VALID VALUES:
 - domain: Banking | Transfers | Invest | Security & Risk
-- team_owner items: CS | Ops | Fraud Ops | L2 - Risk
+- team_owner items: CS | Ops | Fraud Ops | L2 - Risk (custom values supported as teams scale)
+  SELECTION RULE — team_owner is the team that EXECUTES and OWNS the workflow, not just first-touch:
+  • L1 tries to contain but immediately triages to L2 → team_owner: [Ops] (L2 owns it — do NOT include CS)
+  • L2 opens a JIRA but still handles the client → team_owner: [Ops] (L2 still owns the interaction)
+  • L1 contains the entire workflow end-to-end → team_owner: [CS]
+  • Card explicitly shows both teams active throughout with no handoff → list both
+  • Source explicitly says L3 handles it → note in description; team_owner: [Ops] unless L3 fully takes over
 - volume_tier: High | Medium | Low
 - user_tools items: Atlas | Persona | OAS | JIRA | Google Sheets | DOCX
 - jira_boards items: BOPSIT | BOPSFUND | EOC | BOSM | BOTAX | WORP | BOAO | LEDGE | DAM | FRAUD | DOCX
@@ -148,8 +159,13 @@ NODE TYPE DEFINITIONS — critical, do not confuse:
 PROCESS MAP RULES:
 - NODE COUNT: aim for 5-8 nodes per lane maximum. Combine related sequential actions into one node. Do not create a node for every sub-bullet in the source.
 - Always start with a start node (lane: CS) and end with an end node (lane: CS).
-- step/decision nodes → use the lane of the team PERFORMING the action (CS = L1/L1 24/7, Ops = L2 back-office, L2 - Risk = Security Risk L2).
-- AGENT TIER PREFIX: prefix every step/decision label with the agent tier — e.g. "L1 24/7: Perform enhanced verification", "L2 Ops: Reset PIN counter", "L1: Confirm issue is blocked card".
+- NODE LANE — assign to the tier PERFORMING that specific step:
+  • L1 (CS offshore) → lane: CS — initial intake, containment attempts, triage macros
+  • L2 in-house front-line → lane: Ops — handles escalated work, opens JIRAs, owns resolution
+  • L2 fraud team → lane: Fraud Ops
+  • L2 security/risk team → lane: L2 - Risk
+  • L3 → lane: Ops unless source specifies otherwise; label with "L3:" prefix
+- AGENT TIER PREFIX: always prefix step/decision labels with the performing tier — e.g. "L1: Verify account in Atlas", "L1 24/7: Triage to L2 via JIRA", "L2 Ops: Review and resolve", "L2 Ops: Open JIRA to back-office", "L3: Handle complex escalation".
 - automation nodes → always lane: Automation.
 - comms nodes → always lane: Client.
 - Position x: start at 150, increment ~200 per step. Position y: set to 0 — the tool auto-computes layout from graph topology.

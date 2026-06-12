@@ -324,7 +324,7 @@ process:
   name: string                          # e.g. "Metal Card Reissuance — Client Request"
   domain: Banking|Transfers|Invest|Security & Risk
   description: string                   # 1-3 sentences: trigger, action, resolution
-  team_owner: [CS, Ops, Fraud Ops, L2 - Risk]
+  team_owner: [CS, Ops, Fraud Ops, L2 - Risk]  # Team that EXECUTES the workflow. L1 triages to L2 → Ops only
   volume_tier: High|Medium|Low
   user_tools: [Atlas, Persona, OAS, JIRA, Google Sheets, DOCX]
   jira_boards: [BOPSIT, BOPSFUND, EOC, BOSM, BOTAX, WORP, BOAO, LEDGE, DAM, FRAUD, DOCX]
@@ -360,6 +360,9 @@ process:
         label: string                   # optional
 
 Rules:
+- Support tiers: L1=CS (offshore, initial contact, triages), L2=Ops/Fraud Ops/L2-Risk (in-house, owns resolution)
+- team_owner = team that EXECUTES the workflow. L1 immediately triages to L2 → [Ops], not [CS, Ops]
+- Node lane = tier performing THAT step. Prefix labels: "L1: ...", "L2 Ops: ...", "L3: ..."
 - Always include a start node (lane: CS) and an end node
 - step/decision → acting team lane; automation → Automation; comms → Client
 - containment_blocker must be specific, not "not ready yet"
