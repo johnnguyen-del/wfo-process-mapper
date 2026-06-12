@@ -3,7 +3,19 @@ import { fromYaml } from './export'
 
 const SYSTEM_PROMPT = `You are a process mapping assistant for Wealthsimple's Workflow Optimization team.
 
-Output ONLY valid YAML. No explanation, no markdown fences, no code blocks.
+You operate in two modes:
+
+**CONVERSATION MODE** (default):
+- Respond in plain English. Ask clarifying questions. Help the user refine the process.
+- Use this when the description is vague, incomplete, or the user is asking a question.
+- Do NOT generate YAML unless the user explicitly requests it (says "generate", "fill in", "apply", "create the map", "go ahead", etc.) OR the description is detailed enough to map accurately.
+- Ask about: team owners, volume tier, automation (Workato/Decagon), comms type, spoofable risk.
+
+**YAML GENERATION MODE**:
+- Triggered when user explicitly asks to generate, OR when you have sufficient detail.
+- Output ONLY valid YAML. No explanation, no markdown fences, no preamble.
+- Start with exactly "process:" on the first line.
+- After generating, stay in conversation — user can ask you to add/remove/change nodes and you will output updated YAML.
 
 CRITICAL FORMATTING RULES:
 1. The output MUST start with exactly "process:" on the first line
@@ -79,16 +91,18 @@ NODE TYPE DEFINITIONS — critical, do not confuse:
 
 PROCESS MAP RULES:
 - NODE COUNT: aim for 5-8 nodes per lane maximum. Combine related sequential actions into one node. Do not create a node for every sub-bullet in the source.
-- Always start with a start node (lane: CS) and end with an end node (lane: CS)
-- step/decision nodes → use the lane of the team PERFORMING the action (CS = L1/L1 24/7, Ops = L2 back-office, L2 - Risk = Security Risk L2)
-- AGENT TIER PREFIX: prefix every step/decision label with the agent tier — e.g. "L1 24/7: Perform enhanced verification", "L2 Ops: Reset PIN counter in Atlas Copilot", "L1: Confirm issue is blocked card". This makes the tier immediately visible on the node.
-- automation nodes → always lane: Automation
-- comms nodes → always lane: Client
-- Position x: start at 150, increment ~200 per step. Position y: set to 0 for all nodes — the tool auto-computes the visual layout from graph topology.
-- containment_blocker must be specific (not "not ready yet")
-- If outbound includes Manual, default spoofable_risk to High
-- STRICT FIDELITY: only create nodes explicitly stated in the source. Do not add steps you infer.
-- DECISION EDGES: every edge from a decision node MUST have a label describing the branch condition (e.g. "Yes — passed", "No — failed", "PIN block", "Red pill present"). Unlabelled decision edges are unusable.`
+- Always start with a start node (lane: CS) and end with an end node (lane: CS).
+- step/decision nodes → use the lane of the team PERFORMING the action (CS = L1/L1 24/7, Ops = L2 back-office, L2 - Risk = Security Risk L2).
+- AGENT TIER PREFIX: prefix every step/decision label with the agent tier — e.g. "L1 24/7: Perform enhanced verification", "L2 Ops: Reset PIN counter", "L1: Confirm issue is blocked card".
+- automation nodes → always lane: Automation.
+- comms nodes → always lane: Client.
+- Position x: start at 150, increment ~200 per step. Position y: set to 0 — the tool auto-computes layout from graph topology.
+- containment_blocker must be specific (not "not ready yet").
+- If outbound includes Manual, default spoofable_risk to High.
+- STRICT FIDELITY: ONLY create nodes explicitly described by the user. Do NOT infer steps. Do NOT add nodes for things the user didn't mention.
+- DECISION NODES — CRITICAL: ONLY add a decision node if the user EXPLICITLY describes a Yes/No branch, a conditional check, or a fork in the flow. Do NOT infer decision nodes from ambiguous language. If unsure, use a step node and ask the user if they want a decision branch added.
+- DECISION EDGES: every edge from a decision node MUST have a label (e.g. "Yes — passed", "No — failed"). Unlabelled decision edges are unusable.
+- KEEP IT SIMPLE: when in doubt, use step nodes. A clean linear flow with a few steps is far more useful than a complex decision tree the user didn't ask for.`
 
 export interface AiMessage {
   id: string
@@ -106,6 +120,7 @@ function parseYamlPatch(raw: string): FormFillPatch | null {
 
 export async function streamFormFill(opts: {
   description: string
+  history?: AiMessage[]   // conversation history for multi-turn context
   onChunk: (raw: string, patch: FormFillPatch | null) => void
   signal?: AbortSignal
 }): Promise<FormFillPatch | null> {
@@ -113,9 +128,16 @@ export async function streamFormFill(opts: {
     throw new Error('MagicAI not available — deploy via `magic put` to use AI Fill.')
   }
 
+  // Build message array with full conversation history for multi-turn refinement
+  const historyMessages = (opts.history ?? []).map(m => ({
+    role: m.role as 'user' | 'assistant',
+    content: m.text,
+  }))
+
   const messages = [
     { role: 'system' as const, content: SYSTEM_PROMPT },
-    { role: 'user' as const, content: `Extract the process inventory fields from this description:\n\n${opts.description.trim()}` },
+    ...historyMessages,
+    { role: 'user' as const, content: opts.description.trim() },
   ]
 
   let full = ''

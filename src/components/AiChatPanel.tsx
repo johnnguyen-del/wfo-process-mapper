@@ -42,8 +42,11 @@ export default function AiChatPanel({ onApply, viewMode, onApplyToCanvas }: AiCh
     setError(null)
     abortRef.current = new AbortController()
     try {
+      // Pass full conversation history (excluding the new user+assistant pair we just added)
+      const history = messages  // messages before we added the new pair — captured in closure
       const patch = await streamFormFill({
         description: text,
+        history,
         signal: abortRef.current.signal,
         onChunk: (raw, parsed) => {
           setMessages((prev) =>
@@ -276,10 +279,11 @@ Process description:
           <ScrollArea className="flex-1 px-4 py-3">
             {messages.length === 0 ? (
               <div className="space-y-3 text-sm text-muted-foreground">
-                <p>Describe a process in plain English and Claude will fill in all the inventory fields for you.</p>
+                <p>Describe a process and I'll help you map it. I'll ask clarifying questions first, then generate the form fields and canvas map when you're ready.</p>
                 <p className="text-xs bg-muted/40 rounded-lg p-3 leading-relaxed">
-                  <strong className="text-foreground">Example:</strong> "Metal card reissuance — client calls in requesting a replacement metal card. CS agent verifies identity in Atlas, submits a BOPSIT JIRA ticket. Client receives new card in 7–10 days. High volume, manual comms only."
+                  <strong className="text-foreground">Example:</strong> "Metal card reissuance — client requests a replacement. CS verifies identity, submits a JIRA ticket, client gets the card in 7–10 days."
                 </p>
+                <p className="text-xs text-muted-foreground">Say <strong className="text-foreground">"generate"</strong> or <strong className="text-foreground">"fill it in"</strong> when ready to create the map.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -324,7 +328,7 @@ Process description:
               </Button>
             )}
             <div className="flex gap-2">
-              <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend() }} placeholder="Describe the process…" rows={3} className="resize-none text-sm" disabled={streaming} />
+              <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend() }} placeholder="Describe the process, or say 'generate' when ready to create the map…" rows={3} className="resize-none text-sm" disabled={streaming} />
               <Button size="sm" onClick={handleSend} disabled={!input.trim() || streaming} className="self-end"><Send className="w-3.5 h-3.5" /></Button>
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">⌘↵ to send</p>
