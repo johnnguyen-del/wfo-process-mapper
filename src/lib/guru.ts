@@ -99,7 +99,8 @@ export async function getGuruCardById(cardId: string): Promise<GuruCard> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru card fetch requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru__guru_get_card_by_id', { cardId }) as any
+  const result = await MagicTools.call('guru__guru_get_card_by_id', { id: cardId }) as any
+  console.log('[Guru] getGuruCardById raw:', JSON.stringify(result))
   return {
     id: result?.id ?? cardId,
     title: result?.preferredPhrase ?? result?.title ?? 'Untitled',
