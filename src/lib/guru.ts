@@ -75,37 +75,35 @@ export async function listKnowledgeAgents(): Promise<GuruKnowledgeAgent[]> {
 }
 
 /**
- * Search Guru knowledge base for cards matching the query.
- * agentId is required — obtain it from the user's Guru Knowledge Agent settings.
+ * Search Guru knowledge base using guru_search_cards — no agentId required.
  * Returns max 10 results.
  */
-export async function searchGuru(query: string, agentId: string): Promise<GuruCard[]> {
+export async function searchGuru(query: string): Promise<GuruCard[]> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru search requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru__guru_search_documents', { agentId, query })
-  const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? [])
+  const result = await MagicTools.call('guru_search_cards', { query })
+  const items: any[] = Array.isArray(result) ? result : ((result as any)?.results ?? (result as any)?.items ?? (result as any)?.cards ?? [])
   return items.slice(0, 10).map((d: any) => ({
     id: d.id ?? d.cardId ?? '',
-    title: d.title ?? d.preferredPhrase ?? 'Untitled',
+    title: d.preferredPhrase ?? d.title ?? 'Untitled',
     content: stripHtml(d.content ?? d.body ?? d.snippet ?? ''),
     lastModified: d.lastModified ?? d.dateUpdated,
   })).filter(card => card.id !== '')
 }
 
 /**
- * Fetch a single Guru card's full content by ID.
- * Returns HTML stripped to plain text for AI processing.
+ * Fetch a single Guru card's full content using guru_get_card — no agentId required.
  */
 export async function getGuruCardById(cardId: string): Promise<GuruCard> {
   if (typeof MagicTools === 'undefined') {
     throw new Error('Guru card fetch requires deployment — not available in local dev.')
   }
-  const result = await MagicTools.call('guru__guru_get_card_by_id', { cardId }) as any
+  const result = await MagicTools.call('guru_get_card', { cardId }) as any
   return {
     id: result?.id ?? cardId,
     title: result?.preferredPhrase ?? result?.title ?? 'Untitled',
-    content: stripHtml(result?.content ?? result?.html ?? result?.body ?? ''),
+    content: stripHtml(result?.content ?? result?.body ?? ''),
     lastModified: result?.lastModified ?? result?.dateUpdated,
   }
 }
