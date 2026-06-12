@@ -328,10 +328,10 @@ Process description:
               </Button>
             )}
             <div className="flex gap-2">
-              <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend() }} placeholder="Describe the process, or say 'generate' when ready to create the map…" rows={3} className="resize-none text-sm" disabled={streaming} />
+              <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} placeholder="Describe the process, or say 'generate' when ready to create the map…" rows={3} className="resize-none text-sm" disabled={streaming} />
               <Button size="sm" onClick={handleSend} disabled={!input.trim() || streaming} className="self-end"><Send className="w-3.5 h-3.5" /></Button>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">⌘↵ to send</p>
+            <p className="text-[10px] text-muted-foreground mt-1">↵ to send · Shift+↵ for new line</p>
           </div>
         </>
       )}
